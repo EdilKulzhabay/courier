@@ -184,7 +184,7 @@ const OrderNotification: React.FC<OrderNotificationProps> = ({
                     // Свернутое состояние уведомления
                     <View style={styles.collapsedContent}>
                         <View>
-                            <Text style={styles.orderTitle}>Новый заказ #{order.orderId}</Text>
+                            <Text style={styles.orderTitle}>Новый заказ:</Text>
                             <Text style={styles.orderSum}>{order.income} ₸</Text>
                         </View>
                         <TouchableOpacity onPress={expandNotification}>
@@ -207,7 +207,7 @@ const OrderNotification: React.FC<OrderNotificationProps> = ({
                             <View style={styles.addressRow}>
                                 <View style={styles.startPoint} />
                                 <View style={styles.addressDetails}>
-                                    <Text style={styles.addressLabel}>От куда:</Text>
+                                    <Text style={styles.addressLabel}>Откуда:</Text>
                                     <Text style={styles.addressValue}>{order.aquaMarketAddress}</Text>
                                 </View>
                             </View>

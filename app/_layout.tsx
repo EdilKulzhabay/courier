@@ -15,14 +15,29 @@ import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
+    handleNotification: async (notification) => {
+        const title = notification.request.content.title;
+
+        if (title === "getLocation") {
+            return {
+                shouldShowAlert: false,
+                shouldPlaySound: false,
+                shouldSetBadge: false,
+                shouldShowBanner: false,
+                shouldShowList: false,
+            };
+        }
+
+        return {
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
+        };
+    },
 });
+
 
 const BACKGROUND_NOTIFICATION_TASK = "BACKGROUND-NOTIFICATION-TASK";
 
@@ -55,6 +70,8 @@ export default function RootLayout() {
     const notificationListener = useRef<Notifications.Subscription | null>(null);
     const responseListener = useRef<Notifications.Subscription | null>(null);
 
+    const [initialRoute, setInitialRoute] = useState<"start" | "main">("start");
+
     useEffect(() => {
         SplashScreen.hideAsync();
     }, []);
@@ -63,6 +80,7 @@ export default function RootLayout() {
         try {
             const res = await apiService.getData();
             if (res.success && res.userData) {
+                setInitialRoute(res.success ? "main" : "start");
                 await updateCourierData(res.userData);
                 setCourier(res.userData);
                 return res.userData._id;
@@ -262,7 +280,7 @@ export default function RootLayout() {
   return (
       <SafeAreaView style={{flex: 1}}>
           <SafeAreaProvider>
-              <Stack screenOptions={{ headerShown: false }} initialRouteName='start'>
+              <Stack screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
                     <Stack.Screen name="start" />
                     <Stack.Screen name="login" />
                     <Stack.Screen name="register" />

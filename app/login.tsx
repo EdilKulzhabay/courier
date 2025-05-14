@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { apiService } from "../api/services";
 import MyButton from "../components/MyButton";
 import OutlinedFilledLabelInput from "../components/OutlinedFilledLabelInput";
@@ -35,6 +35,7 @@ const Login = () => {
             router.push("./main");
         } else {
             console.log(response.error);
+            Alert.alert("Ошибка", "Неверный логин или пароль");
         }
     }
 
@@ -79,9 +80,9 @@ const Login = () => {
                         autoCapitalize="none"
                     />
 
-                    <TouchableOpacity onPress={() => {}} style={styles.forgotPassword}>
+                    {/* <TouchableOpacity onPress={() => {}} style={styles.forgotPassword}>
                         <Text style={styles.forgotPasswordText}>Забыли пароль?</Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                 </View>
 
                 <View>

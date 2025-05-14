@@ -167,7 +167,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
                                         style={styles.itemTouchable}
                                     >
                                         <View style={styles.checkbox}>
-                                            {checkedItems[0] || order.step === 'toClient' && (
+                                            {(checkedItems[0] || order.step === 'toClient') && (
                                                 <Image source={require('../assets/images/check.png')} style={{ width: 24, height: 24 }}/>
                                             )}
                                         </View>
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
         marginTop: 4
     },
     helpText: {
-        fontSize: 18,
+        fontSize: 16,
         marginLeft: 16
     },
     arrowIcon: {

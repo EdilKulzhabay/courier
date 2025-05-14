@@ -124,14 +124,14 @@ const Otp = () => {
                 </Text>
 
                 <TouchableOpacity
-                disabled={timer > 0}
-                onPress={handleResendCode}
+                    disabled={timer > 0}
+                    onPress={handleResendCode}
                 >
-                {timer === 0 && (
-                    <Text style={styles.resendText}>
-                    Отправить код повторно
-                    </Text>
-                )}
+                    {timer === 0 && (
+                        <Text style={styles.resendText}>
+                        Отправить код повторно
+                        </Text>
+                    )}
                 </TouchableOpacity>
             </View>
         </KeyboardAvoidingView>
