@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router"
 import { useEffect, useState } from "react"
-import { Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import { apiService } from "../api/services"
 import MyButton from "../components/MyButton"
 import MySwitchToggle from "../components/MySwitchToggle"
@@ -36,6 +36,7 @@ const Settings = () => {
         await removeTokenData();
         await removeCourierData();
         await removeNotificationTokenData();
+        setIsModalVisible(false);
         router.push("./start");
     }
 
@@ -283,7 +284,12 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F7F7F7',
-        paddingTop: 38
+        ...Platform.select({
+            android: {
+                paddingTop: 38
+            },
+            ios: {}
+        })
     },
     header: {
         flexDirection: 'row',

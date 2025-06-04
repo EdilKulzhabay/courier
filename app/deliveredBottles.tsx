@@ -2,7 +2,7 @@ import { apiService } from "@/api/services";
 import { OrderHistory } from "@/types/interfaces";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Button, Dimensions, Image, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Button, Dimensions, Image, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Calendar } from "react-native-calendars";
 // Интерфейс для диапазона дат
 interface DateRange {
@@ -23,6 +23,7 @@ const DeliveredBottles = () => {
     const [loading, setLoading] = useState(false);
     const [deliveredBottlesKol, setDeliveredBottlesKol] = useState(0)
     const [weekData, setWeekData] = useState<number[]>([]);
+    const [isSingleDateMode, setIsSingleDateMode] = useState(false);
 
     const today = new Date();
     const sevenDaysAgo = new Date();
@@ -107,16 +108,24 @@ const DeliveredBottles = () => {
     };
 
     const onDayPress = (day: any) => {
-        if (!range.startDate || (range.startDate && range.endDate)) {
-            setRange({ startDate: new Date(day.timestamp), endDate: null });
-        } else if (range.startDate && !range.endDate) {
-            const selectedDate = new Date(day.timestamp);
-            if (selectedDate > range.startDate) {
-                const newRange = { ...range, endDate: selectedDate };
-                setRange(newRange);
-                setCalendarVisible(false); // Закрываем календарь
-            } else {
+        const selectedDate = new Date(day.timestamp);
+        
+        if (isSingleDateMode) {
+            setRange({ 
+                startDate: selectedDate, 
+                endDate: selectedDate 
+            });
+            setCalendarVisible(false);
+        } else {
+            if (!range.startDate || (range.startDate && range.endDate)) {
                 setRange({ startDate: selectedDate, endDate: null });
+            } else if (range.startDate && !range.endDate) {
+                if (selectedDate > range.startDate) {
+                    setRange({ ...range, endDate: selectedDate });
+                    setCalendarVisible(false);
+                } else {
+                    setRange({ startDate: selectedDate, endDate: null });
+                }
             }
         }
     };
@@ -227,6 +236,24 @@ const DeliveredBottles = () => {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
+                        <View style={styles.calendarControls}>
+                            <TouchableOpacity
+                                onPress={() => setIsSingleDateMode(true)}
+                                style={[styles.modeButton, isSingleDateMode && styles.modeButtonActive]}
+                            >
+                                <Text style={[styles.modeButtonText, isSingleDateMode && styles.modeButtonTextActive]}>
+                                    Один день
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setIsSingleDateMode(false)}
+                                style={[styles.modeButton, !isSingleDateMode && styles.modeButtonActive]}
+                            >
+                                <Text style={[styles.modeButtonText, !isSingleDateMode && styles.modeButtonTextActive]}>
+                                    Диапазон
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                         <Calendar
                             onDayPress={onDayPress}
                             markedDates={markedDates}
@@ -243,7 +270,12 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#F7F7F7",
-        paddingTop: 38
+        ...Platform.select({
+            android: {
+                paddingTop: 38
+            },
+            ios: {}
+        })
     },
     header: {
         flexDirection: "row",
@@ -330,7 +362,31 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         padding: 16,
         width: "91.7%"
-    }
+    },
+    calendarControls: {
+        flexDirection: 'row',
+        marginBottom: 16,
+        backgroundColor: 'white',
+        borderRadius: 8,
+        padding: 4,
+    },
+    modeButton: {
+        flex: 1,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 6,
+        alignItems: 'center',
+    },
+    modeButtonActive: {
+        backgroundColor: '#2AA65C',
+    },
+    modeButtonText: {
+        color: '#292D32',
+        fontWeight: '500',
+    },
+    modeButtonTextActive: {
+        color: 'white',
+    },
 });
 
 export default DeliveredBottles;

@@ -14,6 +14,9 @@ export async function registerForPushNotificationsAsync() {
     }
 
     if (Device.isDevice) {
+
+        console.log("we in registerForPushNotificationsAsync Device.isDevice = ", Device.isDevice);
+        
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
 
@@ -23,6 +26,7 @@ export async function registerForPushNotificationsAsync() {
         }
 
         if (finalStatus !== "granted") {
+            console.log("finalStatus = ", finalStatus);
             throw new Error(
                 "Permission not granted to get push token for push notification!"
             );
@@ -32,6 +36,7 @@ export async function registerForPushNotificationsAsync() {
         Constants?.easConfig?.projectId;
 
         if (!projectId) {
+            console.log("projectId = ", projectId);
             throw new Error("Project ID not found");
         }
         try {
@@ -41,6 +46,7 @@ export async function registerForPushNotificationsAsync() {
             console.log(pushTokenString);
             return pushTokenString;
         } catch (e: unknown) {
+            console.log("e = ", e);
             throw new Error(`${e}`);
         }
     } else {

@@ -1,5 +1,5 @@
-import { useLocalSearchParams, useRouter } from "expo-router"
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const OrderHistoryData = () => {
     const router = useRouter()
@@ -70,7 +70,12 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#F7F7F7",
-        paddingTop: 38
+        ...Platform.select({
+            android: {
+                paddingTop: 38
+            },
+            ios: {}
+        })
     },
     header: {
         flexDirection: "row",

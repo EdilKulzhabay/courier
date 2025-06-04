@@ -2,7 +2,7 @@ import { apiService } from "@/api/services";
 import { OrderHistory } from "@/types/interfaces";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Button, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Button, Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Calendar } from "react-native-calendars";
 
 interface DateRange {
@@ -240,7 +240,12 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#F7F7F7",
-        paddingTop: 38
+        ...Platform.select({
+            android: {
+                paddingTop: 38
+            },
+            ios: {}
+        })
     },
     header: {
         flexDirection: "row",

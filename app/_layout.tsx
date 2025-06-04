@@ -5,7 +5,7 @@ import { registerForPushNotificationsAsync } from '@/utils/registerForPushNotifi
 import { saveNotificationTokenData, updateCourierData } from '@/utils/storage';
 import * as Location from 'expo-location';
 import * as Notifications from "expo-notifications";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from 'expo-status-bar';
 import * as TaskManager from "expo-task-manager";
@@ -59,6 +59,7 @@ Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+    const router = useRouter()
     const [courier, setCourier] = useState<CourierData | null>(null);
     const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
     const [showNotification, setShowNotification] = useState(false);

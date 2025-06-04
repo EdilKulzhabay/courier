@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // import OrderDetails from '../components/OrderDetails';
 import OrderDetails from '@/components/OrderDetails';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -128,7 +128,12 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F6F6F6',
-        paddingTop: 38
+        ...Platform.select({
+            android: {
+                paddingTop: 38
+            },
+            ios: {}
+        })
     },
     header: {
         flexDirection: 'row',

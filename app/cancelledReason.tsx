@@ -3,7 +3,7 @@ import MyButton from "@/components/MyButton";
 import OutlinedFilledLabelInput from "@/components/OutlinedFilledLabelInput";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const CancelledReason = () => {
     const router = useRouter();
@@ -65,7 +65,12 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F7F7F7',
-        paddingTop: 38
+        ...Platform.select({
+            android: {
+                paddingTop: 38
+            },
+            ios: {}
+        })
     },
     header: {
         flexDirection: 'row',

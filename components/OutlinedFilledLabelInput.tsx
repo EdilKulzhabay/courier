@@ -1,12 +1,13 @@
-import React, { useState, useEffect, ReactNode } from "react";
+import React, { ReactNode, useEffect, useRef, useState } from "react";
 import {
-    TextInput,
-    TextInputProps,
-    View,
     Animated,
     Image,
-    TouchableOpacity,
     StyleSheet,
+    TextInput,
+    TextInputProps,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
 } from "react-native";
 
 interface Props extends TextInputProps {
@@ -41,6 +42,7 @@ const OutlinedFilledLabelInput: React.FC<Props> = ({
 }) => {
     const [isFocused, setIsFocused] = useState(false);
     const [isSecure, setIsSecure] = useState(true);
+    const inputRef = useRef<TextInput>(null);
     const animatedLabel = useState(new Animated.Value(value ? 1 : 0))[0];
 
     useEffect(() => {
@@ -66,53 +68,60 @@ const OutlinedFilledLabelInput: React.FC<Props> = ({
     const toggleSecure = () => setIsSecure(!isSecure);
 
     return (
-        <View style={styles.container}>
-            <View style={styles.inputContainer}>
-                <Animated.Text
-                    style={[styles.animatedLabel, labelStyle]}
-                >
-                    {label}
-                </Animated.Text>
-                <View style={styles.inputWrapper}>
-                    <TextInput
-                        style={styles.input}
-                        value={value}
-                        keyboardType={rest.keyboardType}
-                        onFocus={() => setIsFocused(true)}
-                        onBlur={() => setIsFocused(false)}
-                        secureTextEntry={isPassword && isSecure}
-                        onChangeText={(text) => {
-                        if (mask === "phone") {
-                            const formatted = formatKzPhone(text);
-                            onChangeText(formatted);
-                        } else {
-                            onChangeText(text);
-                        }
-                        }}
-                        {...rest}
-                    />
-                </View>
-                {isPassword ? (
-                    <TouchableOpacity onPress={toggleSecure} style={styles.iconButton}>
-                        <Image
-                            source={
-                                isSecure
-                                ? require("../assets/images/EyeSlash.png") // Иконка "глаз с чертой" (скрыт)
-                                : require("../assets/images/Eye.png") // Иконка "глаз" (виден)
+        <TouchableWithoutFeedback onPress={() => {
+            if (inputRef.current) {
+                inputRef.current.focus();
+            }
+        }}>
+            <View style={styles.container}>
+                <View style={styles.inputContainer}>
+                    <Animated.Text
+                        style={[styles.animatedLabel, labelStyle]}
+                    >
+                        {label}
+                    </Animated.Text>
+                    <View style={styles.inputWrapper}>
+                        <TextInput
+                            ref={inputRef}
+                            style={styles.input}
+                            value={value}
+                            keyboardType={rest.keyboardType}
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={() => setIsFocused(false)}
+                            secureTextEntry={isPassword && isSecure}
+                            onChangeText={(text) => {
+                            if (mask === "phone") {
+                                const formatted = formatKzPhone(text);
+                                onChangeText(formatted);
+                            } else {
+                                onChangeText(text);
                             }
-                            style={{ width: 24, height: 24 }}
-                            resizeMode="contain"
+                            }}
+                            {...rest}
                         />
-                    </TouchableOpacity>
-                    ) : (
-                    rightIcon && (
-                        <TouchableOpacity onPress={onRightIconPress} style={styles.iconButton}>
-                            {rightIcon}
+                    </View>
+                    {isPassword ? (
+                        <TouchableOpacity onPress={toggleSecure} style={styles.iconButton}>
+                            <Image
+                                source={
+                                    isSecure
+                                    ? require("../assets/images/EyeSlash.png") // Иконка "глаз с чертой" (скрыт)
+                                    : require("../assets/images/Eye.png") // Иконка "глаз" (виден)
+                                }
+                                style={{ width: 24, height: 24 }}
+                                resizeMode="contain"
+                            />
                         </TouchableOpacity>
-                    )
-                )}
+                        ) : (
+                        rightIcon && (
+                            <TouchableOpacity onPress={onRightIconPress} style={styles.iconButton}>
+                                {rightIcon}
+                            </TouchableOpacity>
+                        )
+                    )}
+                </View>
             </View>
-        </View>
+        </TouchableWithoutFeedback>
     );
 };
 

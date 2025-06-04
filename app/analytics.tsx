@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from "expo-router"
 import { useCallback, useState } from "react"
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import { apiService } from "../api/services"
 import MyButton from "../components/MyButton"
 import { CourierData } from "../types/interfaces"
@@ -109,7 +109,12 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F7F7F7',
-        paddingTop: 38
+        ...Platform.select({
+            android: {
+                paddingTop: 38
+            },
+            ios: {}
+        })
     },
     header: {
         flexDirection: 'row',

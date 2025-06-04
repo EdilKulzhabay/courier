@@ -1,13 +1,34 @@
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // import { useNavigation } from "@react-navigation/native";
 // import { NavigationProps } from "../navigation/AppNavigatorTypes";
+import { apiService } from '@/api/services';
+import { updateCourierData } from '@/utils/storage';
 import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import MyButton from '../components/MyButton';
 
 
 const StartScreen = () => {
 
     const router = useRouter();
+
+    const fetchCourierData = async () => {
+      try {
+          const res = await apiService.getData();
+          if (res.success && res.userData) {
+              await updateCourierData(res.userData);
+              router.push("./main")
+          }
+          return null;
+      } catch (error) {
+          console.error('Ошибка при получении данных курьера:', error);
+          return null;
+      }
+    };
+
+    useEffect(() => {
+      fetchCourierData()
+    }, [])
 
     return (
         <View style={styles.container}>

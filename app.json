@@ -5,12 +5,20 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "courier",
+    "scheme": "tibetskayacourier",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.courier.app"
+      "bundleIdentifier": "com.tibetskayacourier.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["remote-notification", "location"],
+        "NSLocationWhenInUseUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов",
+        "NSLocationAlwaysUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов"
+      },
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -35,6 +43,13 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#DC3F34"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#DC3F34"
         }
       ]
     ],

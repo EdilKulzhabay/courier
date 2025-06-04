@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router"
 import { useEffect, useState } from "react"
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import { Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import DateTimePickerModal from "react-native-modal-datetime-picker"
 import { apiService } from "../api/services"
 import MultiSelectInput from "../components/MultiSelectInput"
@@ -200,7 +200,12 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F7F7F7',
-        paddingTop: 38
+        ...Platform.select({
+            android: {
+                paddingTop: 38
+            },
+            ios: {}
+        })
     },
     header: {
         flexDirection: 'row',

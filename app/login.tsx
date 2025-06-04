@@ -1,10 +1,10 @@
+import { registerForPushNotificationsAsync } from "@/utils/registerForPushNotificationsAsync";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { apiService } from "../api/services";
 import MyButton from "../components/MyButton";
 import OutlinedFilledLabelInput from "../components/OutlinedFilledLabelInput";
-import { registerForPushNotificationsAsync } from "../utils/registerForPushNotificationsAsync";
 import { saveCourierData, saveTokenData } from "../utils/storage";
 const screenWidth = Dimensions.get('window').width
 
@@ -16,10 +16,9 @@ const Login = () => {
 
     const handleLogin = async () => {
         const response = await apiService.loginCourier({ email, password });
-        console.log(response);
         if (response.success) {
             console.log("response.userData = ", response.userData);
-            
+            console.log("1response.token = ", response.token);
             const token = await registerForPushNotificationsAsync();
             if (token && response.userData && response.userData.notificationPushToken !== token) {
                 await apiService.updateData(response.userData._id, "notificationPushToken", token);
@@ -28,10 +27,12 @@ const Login = () => {
                 await saveCourierData({ ...response.userData });
             }
 
+            console.log("2response.token = ", response.token);
+            
+
             await saveTokenData({
                 token: response.token,
             });
-            console.log("token = ", token);
             router.push("./main");
         } else {
             console.log(response.error);
@@ -40,7 +41,7 @@ const Login = () => {
     }
 
     return (
-        <ScrollView style={styles.container}>
+        <View style={styles.container}>
 
             <View style={styles.bannerContainer}>
                 <Image
@@ -103,7 +104,7 @@ const Login = () => {
                 </View>
             </View>
           
-        </ScrollView>
+        </View>
     );
 };
 
@@ -135,7 +136,7 @@ const styles = StyleSheet.create({
         marginTop: 20,
         paddingBottom: 40,
         justifyContent: 'space-between',
-        minHeight: Dimensions.get('window').height - (screenWidth / 1.76 + 38 + 24 + 20)
+        // minHeight: Dimensions.get('window').height - (screenWidth / 1.76 + 38 + 24 + 20)
     },
     forgotPassword: {
         marginTop: 5,
