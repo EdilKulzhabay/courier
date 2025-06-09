@@ -13,10 +13,11 @@
       "bundleIdentifier": "com.tibetskayacourier.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": ["remote-notification", "location"],
+        "UIBackgroundModes": ["remote-notification", "location", "fetch", "processing"],
         "NSLocationWhenInUseUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов",
-        "NSLocationAlwaysUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов"
+        "NSLocationAlwaysUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов",
+        "BGTaskSchedulerPermittedIdentifiers": ["com.tibetskayacourier.app.refresh"]
       },
       "googleServicesFile": "./GoogleService-Info.plist"
     },
@@ -27,7 +28,15 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.courier.app",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "WAKE_LOCK",
+        "FOREGROUND_SERVICE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ]
     },
     "web": {
       "bundler": "metro",

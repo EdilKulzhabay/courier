@@ -10,7 +10,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from 'expo-status-bar';
 import * as TaskManager from "expo-task-manager";
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, SafeAreaView } from 'react-native';
+import { Alert, SafeAreaView, View } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -201,11 +201,17 @@ export default function RootLayout() {
         responseListener.current =
         Notifications.addNotificationResponseReceivedListener((response) => {
             console.log(
-            "🔔 Notification Response: ",
-            JSON.stringify(response, null, 2),
-            JSON.stringify(response.notification.request.content.data, null, 2)
+                "🔔 Notification Response: ", response.notification.request.content
             );
-            // Handle the notification response here
+            
+            const { title, data } = response.notification.request.content;
+            
+            if (title === "newOrder" && data?.order) {
+                const orderData = data.order as Order;
+                setCurrentOrder(orderData);
+                setShowNotification(true);
+                setIsOrderAccepted(false);
+            }
         });
 
         return () => {
@@ -293,6 +299,7 @@ export default function RootLayout() {
                     <Stack.Screen name="success" />
                     <Stack.Screen name="cancelled" />
                     <Stack.Screen name="cancelledReason" />
+                    <Stack.Screen name="changeOrderBottles" />
 
                     <Stack.Screen name="settings" />
                     <Stack.Screen name="changeData" />
@@ -316,6 +323,7 @@ export default function RootLayout() {
                   />
               )}
           </SafeAreaProvider>
+          <View style={{height: 30}}></View>
       </SafeAreaView>
   )
 }

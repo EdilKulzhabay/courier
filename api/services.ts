@@ -1,5 +1,5 @@
+import { Order } from '../types/interfaces';
 import api from './axios';
-import { Order, FinanceType } from '../types/interfaces';
 
 // Примеры API-сервисов
 export const apiService = {

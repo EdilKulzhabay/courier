@@ -201,13 +201,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
 
                         <TouchableOpacity
                             style={styles.helpSection}
-                            onPress={() => {console.log("order in orderDetails = ", order);
-                            }}
+                            onPress={() => {router.push("/changeOrderBottles")}}
                         >
                             <View style={styles.helpLeft}>
-                                <Image source={require("../assets/images/question.png")} style={styles.questionIcon} resizeMode='contain' />
+                                {/* <Image source={require("../assets/images/question.png")} style={styles.questionIcon} resizeMode='contain' /> */}
                                 <Text style={styles.helpText}>
-                                    Возникли проблемы с заказом?
+                                    Изменить количество бутылей?
                                 </Text>
                             </View>
 
