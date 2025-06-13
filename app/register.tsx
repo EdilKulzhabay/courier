@@ -12,6 +12,7 @@ const screenWidth = Dimensions.get('window').width;
 const Register = () => {
     const router = useRouter();
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     const languages = [
         { label: "Казахский", value: "kz" },
@@ -43,19 +44,21 @@ const Register = () => {
     const showDatePicker = () => setDatePickerVisibility(true);
     const hideDatePicker = () => setDatePickerVisibility(false);
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
+        setLoading(true);
         // Валидация формы
         if (!form.firstName || !form.lastName || !form.email || !form.phone || !form.birthDate || 
             !form.country || !form.city || !form.termsAccepted || !form.privacyAccepted) {
+            setLoading(false);
             // Показать ошибку
             return;
         }
-        
         // Отправка формы и переход на экран OTP
         router.push({
             pathname: './otp',
             params: { formData: JSON.stringify(form) }
         });
+        setLoading(false);
     };
 
     return (
@@ -202,6 +205,7 @@ const Register = () => {
                         disabled={!form.termsAccepted || !form.privacyAccepted || !form.firstName || !form.lastName || !form.email || !form.phone || !form.birthDate || !form.country || !form.city}
                         width="full"
                         onPress={handleSubmit}
+                        loading={loading}
                     />
                 </View>
             </View>

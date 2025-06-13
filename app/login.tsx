@@ -13,8 +13,10 @@ const Login = () => {
 
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
+    const [loading, setLoading] = useState(false);
 
     const handleLogin = async () => {
+        setLoading(true);
         const response = await apiService.loginCourier({ email, password });
         if (response.success) {
             console.log("response.userData = ", response.userData);
@@ -38,6 +40,7 @@ const Login = () => {
             console.log(response.error);
             Alert.alert("Ошибка", "Неверный логин или пароль");
         }
+        setLoading(false);
     }
 
     return (
@@ -93,6 +96,7 @@ const Login = () => {
                         disabled={false}
                         width="full"
                         onPress={handleLogin}
+                        loading={loading}
                     />
                     <TouchableOpacity 
                         onPress={() => router.push("./register")} 

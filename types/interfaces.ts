@@ -10,6 +10,8 @@ export interface Order {
     comment?: string;
     clientReview?: number;
     clientNotes?: string[];
+    clientTitle?: string;
+    clientPhone?: string;
     clientAddress?: string;
     clientAddressLink?: string;
     clientPoints?: {

@@ -1,5 +1,5 @@
 import React from "react";
-import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity } from "react-native";
 
 type MyButtonProps = {
     title: string;
@@ -7,6 +7,7 @@ type MyButtonProps = {
     disabled?: boolean;
     width?: "full" | "content";
     onPress?: () => void;
+    loading?: boolean;
 };
 
 const MyButton: React.FC<MyButtonProps> = ({
@@ -15,21 +16,26 @@ const MyButton: React.FC<MyButtonProps> = ({
     disabled = false,
     width = "full",
     onPress,
+    loading = false,
 }) => {
     return (
         <TouchableOpacity
             style={[
                 styles.button,
                 variant === "outlined" ? styles.outlined : styles.contained,
-                disabled && styles.disabled,
+                (disabled || loading) && styles.disabled,
                 width === "full" ? styles.fullWidth : styles.contentWidth,
             ]}
             onPress={onPress}
-            disabled={disabled}
+            disabled={disabled || loading}
         >
-            <Text style={[styles.text, variant === "outlined" && styles.textOutlined]}>
-                {title}
-            </Text>
+            {loading ? (
+                <ActivityIndicator color={variant === "outlined" ? "#DC1818" : "white"} />
+            ) : (
+                <Text style={[styles.text, variant === "outlined" && styles.textOutlined]}>
+                    {title}
+                </Text>
+            )}
         </TouchableOpacity>
     );
 };

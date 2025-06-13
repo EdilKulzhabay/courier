@@ -3,7 +3,8 @@ import { Order } from "@/types/interfaces";
 import { getCourierData } from "@/utils/storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Dimensions, Image, PanResponder, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Animated, Dimensions, Image, Linking, PanResponder, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import MyButton from "./MyButton";
 
 interface OrderDetailsProps {
     order: Order;
@@ -87,14 +88,18 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
         setCheckedItems(newCheckedItems);
     };
 
+    const [orderTakenLoading, setOrderTakenLoading] = useState(false);
+    const [completeOrderLoading, setCompleteOrderLoading] = useState(false);
+
     const handleOrderTaken = async () => {
+        setOrderTakenLoading(true);
         if (!checkedItems.includes(false)) {
             if (onStepChange) {
-                onStepChange('toClient');
+                await onStepChange('toClient');
             }
-
             // navigation.navigate('OrderStatus');
         }
+        setOrderTakenLoading(false);
     };
 
     useEffect(() => {
@@ -106,6 +111,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
     })  
 
     const completeOrder = async () => {
+        setCompleteOrderLoading(true);
         const courier = await getCourierData();
         if (courier) {
             const res = await apiService.completeOrder(order.orderId, courier._id, order.products.b12, order.products.b19);
@@ -117,6 +123,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
                 });
             }
         }
+        setCompleteOrderLoading(false);
     }
     
     return (
@@ -158,6 +165,21 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
                         <Text style={styles.title}>
                             Детали заказа:
                         </Text>
+                        <View>
+                            <Text style={styles.subTitle}>Клиент: {order.clientTitle}</Text>
+                        </View>
+                        <View>
+                            <MyButton
+                                title={`Номер: ${order.clientPhone}`}
+                                onPress={() => {
+                                    if (order.clientPhone) {
+                                        Linking.openURL(`tel:${order.clientPhone}`);
+                                    }
+                                }}
+                                variant="outlined"
+                                width="full"
+                            />
+                        </View>
                         <View style={styles.detailsContainer}>
                             {order.products.b12 > 0 && (
                                 <View style={styles.itemRow}>
@@ -216,28 +238,22 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
                         </TouchableOpacity>
                         <View style={styles.buttonContainer}>
                             {order.step === 'toAquaMarket' ? (
-                            // Кнопка перехода к статусу заказа после принятия
-                                <TouchableOpacity
+                                <MyButton
+                                    title="Заказ у меня"
                                     onPress={handleOrderTaken}
+                                    variant="contained"
+                                    width="full"
                                     disabled={checkedItems.includes(false)}
-                                    style={[styles.primaryButton, checkedItems.includes(false) ? styles.disabledButton : {}]}
-                                >
-                                    <Text style={styles.buttonText}>
-                                        Заказ у меня
-                                    </Text>
-                                </TouchableOpacity>
+                                    loading={orderTakenLoading}
+                                />
                             ) : (
-                            // Кнопки принятия/отказа от заказа
-                            <>
-                                <TouchableOpacity
+                                <MyButton
+                                    title="Отдать заказ"
                                     onPress={completeOrder}
-                                    style={styles.primaryButton}
-                                >
-                                    <Text style={styles.buttonText}>
-                                        Отдать заказ
-                                    </Text>
-                                </TouchableOpacity>
-                            </>
+                                    variant="contained"
+                                    width="full"
+                                    loading={completeOrderLoading}
+                                />
                             )}
                             <TouchableOpacity
                                 onPress={() => {
@@ -293,6 +309,10 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: '500',
         marginTop: -8
+    },
+    subTitle: {
+        fontSize: 16,
+        fontWeight: '500'
     },
     detailsContainer: {
         marginTop: 16

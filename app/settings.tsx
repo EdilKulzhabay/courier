@@ -15,6 +15,8 @@ const Settings = () => {
     const [isNotificationModalVisible, setIsNotificationModalVisible] = useState(false);
     const [courier, setCourier] = useState<CourierData | null>(null);
     const [notification, setNotification] = useState(true);
+    const [logoutLoading, setLogoutLoading] = useState(false);
+    const [notificationOffLoading, setNotificationOffLoading] = useState(false);
 
     const fetchCourierData = async () => {
         const courierData = await getCourierData();
@@ -30,6 +32,7 @@ const Settings = () => {
     }, []);
 
     const logout = async () => {
+        setLogoutLoading(true);
         if (courier?._id) {
             await apiService.updateData(courier._id, "onTheLine", false);
         }
@@ -38,9 +41,11 @@ const Settings = () => {
         await removeNotificationTokenData();
         setIsModalVisible(false);
         router.push("./start");
+        setLogoutLoading(false);
     }
 
     const notificationOff = async () => {
+        setNotificationOffLoading(true);
         setNotification(false)
         if (courier?._id) {
             await apiService.updateData(courier._id, "notificationPushToken", "");
@@ -49,6 +54,7 @@ const Settings = () => {
             await fetchCourierData();
         } 
         setIsNotificationModalVisible(false);
+        setNotificationOffLoading(false);
     }
 
     const notificationOn = async () => {
@@ -227,6 +233,7 @@ const Settings = () => {
                                     title="Выйти"
                                     onPress={logout}
                                     variant="contained"
+                                    loading={logoutLoading}
                                 />
                             </View>
                             <View style={[styles.modalButton, styles.modalButtonRight]}>
@@ -261,6 +268,7 @@ const Settings = () => {
                                     title="Выключить"
                                     onPress={notificationOff}
                                     variant="contained"
+                                    loading={notificationOffLoading}
                                 />
                             </View>
                             <View style={[styles.modalButton, styles.modalButtonRight]}>

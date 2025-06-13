@@ -16,6 +16,8 @@ const ChangeData = () => {
 
     const [courier, setCourier] = useState<CourierData | null>(null);
 
+    const [loading, setLoading] = useState(false);
+
     const fetchCourierData = async () => {
         const courierData = await apiService.getData();
         console.log("courierData = ", courierData);
@@ -81,6 +83,7 @@ const ChangeData = () => {
     const hideDatePicker = () => setDatePickerVisibility(false);
 
     const changeData = async () => {
+        setLoading(true);
         if (courier?._id) {
             const res = await apiService.updateCourierData(courier._id, form);
             if (res.success) {
@@ -88,6 +91,7 @@ const ChangeData = () => {
                 await updateCourierData(res.userData);
             }
         }
+        setLoading(false);
     }
 
     return <View style={styles.container}>
@@ -190,6 +194,7 @@ const ChangeData = () => {
                     title="Сохранить изменения"
                     onPress={changeData}
                     variant="contained"
+                    loading={loading}
                 />
             </View>
         </ScrollView>
