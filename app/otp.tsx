@@ -47,7 +47,7 @@ const Otp = () => {
                         await saveTokenData({
                             token: response.token,
                         });
-                        router.push("./registerAccepted");
+                        router.replace("./registerAccepted");
                     } else {
                     // Обработка ошибки
                         console.error('Ошибка при регистрации:', response.error);

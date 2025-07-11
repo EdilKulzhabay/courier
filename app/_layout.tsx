@@ -3,9 +3,10 @@ import OrderNotification from '@/components/OrderNotification';
 import { CourierData, Order } from '@/types/interfaces';
 import { registerForPushNotificationsAsync } from '@/utils/registerForPushNotificationsAsync';
 import { saveNotificationTokenData, updateCourierData } from '@/utils/storage';
+import { useKeepAwake } from 'expo-keep-awake';
 import * as Location from 'expo-location';
 import * as Notifications from "expo-notifications";
-import { Stack, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from 'expo-status-bar';
 import * as TaskManager from "expo-task-manager";
@@ -38,7 +39,6 @@ Notifications.setNotificationHandler({
     },
 });
 
-
 const BACKGROUND_NOTIFICATION_TASK = "BACKGROUND-NOTIFICATION-TASK";
 
 TaskManager.defineTask(
@@ -49,7 +49,6 @@ TaskManager.defineTask(
             error,
             executionInfo,
         });
-        // Do something with the notification data
     }
 );
 
@@ -58,8 +57,65 @@ Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
+const LOCATION_TASK_NAME = 'background-location-task';
+
+declare global {
+  var courierId: string | undefined;
+}
+
+// Функция для отправки геолокации
+const sendLocationToServer = async (location: any, source: string) => {
+    try {
+        const courierId = global.courierId;
+        if (!courierId) {
+            console.warn(`⚠️ ${source}: Нет ID курьера для отправки геолокации`);
+            return false;
+        }
+
+        // Корректируем время с учетом часового пояса
+        const timestamp = new Date(location.timestamp);
+        timestamp.setHours(timestamp.getHours() + 5);
+
+        const locationData = {
+            lat: location.coords.latitude,
+            lon: location.coords.longitude,
+            timestamp: timestamp,
+        };
+
+        console.log(`📍 ${source}: Отправляем геолокацию:`, locationData);
+        
+        // Отправляем геолокацию через API
+        await apiService.updateData(courierId, "point", locationData);
+        
+        console.log(`✅ ${source}: Геолокация успешно отправлена`);
+        return true;
+    } catch (error) {
+        console.error(`❌ ${source}: Ошибка отправки геолокации:`, error);
+        return false;
+    }
+};
+
+// ОСНОВНАЯ ЗАДАЧА ГЕОЛОКАЦИИ - ПО ДВИЖЕНИЮ
+TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
+    if (error) {
+        console.error('❌ ОСНОВНАЯ ЗАДАЧА: Ошибка:', error);
+        return;
+    }
+    
+    if (data) {
+        const { locations } = data as any;
+        if (locations && locations.length > 0) {
+            const location = locations[0];
+            console.log('📍 ОСНОВНАЯ ЗАДАЧА: Новая позиция при движении');
+            await sendLocationToServer(location, 'ДВИЖЕНИЕ');
+        }
+    }
+});
+
 export default function RootLayout() {
-    const router = useRouter()
+    // Предотвращаем затухание экрана когда приложение открыто
+    useKeepAwake();
+
     const [courier, setCourier] = useState<CourierData | null>(null);
     const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
     const [showNotification, setShowNotification] = useState(false);
@@ -96,20 +152,44 @@ export default function RootLayout() {
 
     const requestPermissions = async () => {
         try {
-            // Запрашиваем разрешения на геолокацию
-            const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
-            setLocationPermissionGranted(locationStatus === 'granted');
+            console.log('🔐 Запрашиваем разрешения...');
             
-            // Запрашиваем разрешения на уведомления
+            // 1. Разрешение на геолокацию переднего плана
+            const { status: fgLocationStatus } = await Location.requestForegroundPermissionsAsync();
+            console.log('📍 Разрешение на геолокацию переднего плана:', fgLocationStatus);
+            setLocationPermissionGranted(fgLocationStatus === 'granted');
+            
+            if (fgLocationStatus !== 'granted') {
+                Alert.alert(
+                    'Разрешение на геолокацию',
+                    'Для работы приложения необходимо разрешение на доступ к местоположению'
+                );
+                return false;
+            }
+            
+            // 2. Разрешение на геолокацию в фоне
+            const { status: bgLocationStatus } = await Location.requestBackgroundPermissionsAsync();
+            console.log('📍 Разрешение на фоновую геолокацию:', bgLocationStatus);
+            
+            if (bgLocationStatus !== 'granted') {
+                Alert.alert(
+                    'Фоновое отслеживание',
+                    'Для отправки местоположения в фоне разрешите "Всегда" в настройках геолокации'
+                );
+            }
+            
+            // 3. Разрешение на уведомления
             const { status: notificationStatus } = await Notifications.getPermissionsAsync();
             if (notificationStatus !== 'granted') {
                 const { status } = await Notifications.requestPermissionsAsync();
+                console.log('🔔 Разрешение на уведомления:', status);
                 setNotificationPermissionGranted(status === 'granted');
             } else {
                 setNotificationPermissionGranted(true);
             }
             
-            return locationStatus === 'granted';
+            console.log('✅ Все разрешения обработаны');
+            return fgLocationStatus === 'granted';
         } catch (error) {
             console.error('Ошибка при запросе разрешений:', error);
             return false;
@@ -136,10 +216,9 @@ export default function RootLayout() {
         notificationListener.current =
         Notifications.addNotificationReceivedListener( async (notification) => {
             console.log("🔔 Notification Received: ", notification);
-            console.log("🔔 Notification Content: ", notification.request.content);
-            console.log("🔔 Notification Data: ", notification.request.content.data);
+            
             try {
-                let courierId = await courier?._id;
+                let courierId = courier?._id;
                 if (!courier?._id) {
                     console.log("🔔 No courier ID, fetching data...");
                     const res = await apiService.getData();
@@ -164,35 +243,6 @@ export default function RootLayout() {
                         setIsOrderAccepted(false);
                     }
                 }
-  
-                if (notification.request.content.title === "getLocation" && courierId) {
-                    console.log("🔔 Get location notification received");
-                    
-                    try {
-                        // Проверяем, есть ли разрешение на геолокацию
-                        if (!locationPermissionGranted) {
-                            const granted = await requestPermissions();
-                            if (!granted) return;
-                        }
-  
-                        let loc = await Location.getCurrentPositionAsync({
-                            accuracy: Location.Accuracy.Balanced
-                        });
-  
-                        const timestamp = new Date(loc.timestamp);
-                        timestamp.setHours(timestamp.getHours() + 5);
-  
-                        if (courierId) {
-                            await apiService.updateData(courierId, "point", {
-                                lat: loc.coords.latitude,
-                                lon: loc.coords.longitude,
-                                timestamp: timestamp
-                            });
-                        }
-                    } catch (error) {
-                        console.error('Ошибка при получении геолокации:', error);
-                    }
-                }
             } catch (error) {
                 console.error('Ошибка обработки уведомления:', error);
             }
@@ -200,9 +250,7 @@ export default function RootLayout() {
 
         responseListener.current =
         Notifications.addNotificationResponseReceivedListener((response) => {
-            console.log(
-                "🔔 Notification Response: ", response.notification.request.content
-            );
+            console.log("🔔 Notification Response: ", response.notification.request.content);
             
             const { title, data } = response.notification.request.content;
             
@@ -216,9 +264,7 @@ export default function RootLayout() {
 
         return () => {
             if (notificationListener.current) {
-                Notifications.removeNotificationSubscription(
-                notificationListener.current
-                );
+                Notifications.removeNotificationSubscription(notificationListener.current);
             }
             if (responseListener.current) {
                 Notifications.removeNotificationSubscription(responseListener.current);
@@ -250,7 +296,6 @@ export default function RootLayout() {
 
     const getNotificationToken = async () => {
         try {
-            // Проверяем, есть ли разрешение на уведомления
             if (!notificationPermissionGranted) {
                 const { status } = await Notifications.requestPermissionsAsync();
                 console.log("_layout.tsx status = ", status);
@@ -264,7 +309,6 @@ export default function RootLayout() {
             if (token) {
                 await saveNotificationTokenData({ notificationPushToken: token });
                 
-                // Обновляем токен на сервере только если есть courier._id
                 if (courier?._id) {
                     await apiService.updateData(courier._id, "notificationPushToken", token);
                 }
@@ -274,20 +318,70 @@ export default function RootLayout() {
         }
     };
 
-  useEffect(() => {
-      fetchCourierData();
-  }, []);
+    useEffect(() => {
+        fetchCourierData();
+    }, []);
 
-  useEffect(() => {
-      if (courier?._id) {
-          getNotificationToken();
-      }
-  }, [courier?._id]);
+    useEffect(() => {
+        if (courier?._id) {
+            getNotificationToken();
+        }
+    }, [courier?._id]);
 
-  return (
-      <SafeAreaView style={{flex: 1}}>
-          <SafeAreaProvider>
-              <Stack screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
+    // ЗАПУСК ОТСЛЕЖИВАНИЯ ГЕОЛОКАЦИИ
+    useEffect(() => {
+        if (!courier?._id) return;
+        
+        global.courierId = courier._id;
+        
+        const startLocationTracking = async () => {
+            console.log('🚀 Запуск отслеживания геолокации...');
+            
+            // Запрашиваем все необходимые разрешения
+            const hasPermissions = await requestPermissions();
+            if (!hasPermissions) {
+                console.error('❌ Нет разрешений для отслеживания геолокации');
+                return;
+            }
+            
+            // Проверяем, не запущено ли уже отслеживание
+            const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+            
+            if (!hasStarted) {
+                try {
+                    await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+                        accuracy: Location.Accuracy.Balanced,
+                        timeInterval: undefined, // Убираем временной интервал
+                        distanceInterval: 1000, // Каждые 1000 метров
+                        showsBackgroundLocationIndicator: true,
+                        foregroundService: {
+                            notificationTitle: 'Отслеживание местоположения',
+                            notificationBody: 'Местоположение отправляется каждые 1000 метров движения',
+                            notificationColor: '#DC1818',
+                        },
+                    });
+                    
+                    console.log('✅ Отслеживание геолокации запущено (каждые 1000 метров)');
+                } catch (error) {
+                    console.error('❌ Ошибка запуска отслеживания:', error);
+                }
+            } else {
+                console.log('ℹ️ Отслеживание уже запущено');
+            }
+        };
+        
+        startLocationTracking();
+        
+        return () => {
+            // Очистка при размонтировании компонента
+            Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME).catch(console.error);
+        };
+    }, [courier?._id]);
+
+    return (
+        <SafeAreaView style={{flex: 1}}>
+            <SafeAreaProvider>
+                <Stack screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
                     <Stack.Screen name="start" />
                     <Stack.Screen name="login" />
                     <Stack.Screen name="register" />
@@ -295,6 +389,7 @@ export default function RootLayout() {
                     <Stack.Screen name="registerAccepted" />
 
                     <Stack.Screen name="main" />
+                    <Stack.Screen name="map" />
                     <Stack.Screen name="orderStatus" />
                     <Stack.Screen name="success" />
                     <Stack.Screen name="cancelled" />
@@ -309,21 +404,21 @@ export default function RootLayout() {
                     <Stack.Screen name="history" />
                     <Stack.Screen name="orderHistoryData" />
                     <Stack.Screen name="finance" />
-              </Stack>
-              <StatusBar style="auto" />
-              {currentOrder && (
-                  <OrderNotification
-                      isVisible={showNotification}
-                      onAccept={handleAcceptOrder}
-                      onDecline={handleDeclineOrder}
-                      onTimeout={handleTimeout}
-                      hideNotification={hideNotification}
-                      isAccepted={isOrderAccepted}
-                      order={currentOrder}
-                  />
-              )}
-          </SafeAreaProvider>
-          <View style={{height: 30}}></View>
-      </SafeAreaView>
-  )
+                </Stack>
+                <StatusBar style="auto" />
+                {currentOrder && (
+                    <OrderNotification
+                        isVisible={showNotification}
+                        onAccept={handleAcceptOrder}
+                        onDecline={handleDeclineOrder}
+                        onTimeout={handleTimeout}
+                        hideNotification={hideNotification}
+                        isAccepted={isOrderAccepted}
+                        order={currentOrder}
+                    />
+                )}
+            </SafeAreaProvider>
+            <View style={{height: 30}}></View>
+        </SafeAreaView>
+    )
 }

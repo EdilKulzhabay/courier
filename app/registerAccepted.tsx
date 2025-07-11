@@ -96,7 +96,7 @@ const RegisterAccepted = () => {
                     variant="contained"
                     disabled={false}
                     width="full"
-                    onPress={() => {router.push("./main")}}
+                    onPress={() => {router.replace("./main")}}
                 />
             </View>
         </View>

@@ -17,30 +17,36 @@ const Login = () => {
 
     const handleLogin = async () => {
         setLoading(true);
-        const response = await apiService.loginCourier({ email, password });
-        if (response.success) {
-            console.log("response.userData = ", response.userData);
-            console.log("1response.token = ", response.token);
-            const token = await registerForPushNotificationsAsync();
-            if (token && response.userData && response.userData.notificationPushToken !== token) {
-                await apiService.updateData(response.userData._id, "notificationPushToken", token);
-                await saveCourierData({ ...response.userData, notificationPushToken: token });
+        try {
+            const response = await apiService.loginCourier({ email, password });
+            if (response.success) {
+                console.log("response.userData = ", response.userData);
+                console.log("1response.token = ", response.token);
+                
+                const token = await registerForPushNotificationsAsync();
+                if (token && response.userData && response.userData.notificationPushToken !== token) {
+                    await apiService.updateData(response.userData._id, "notificationPushToken", token);
+                    await saveCourierData({ ...response.userData, notificationPushToken: token });
+                } else {
+                    await saveCourierData({ ...response.userData });
+                }
+
+                console.log("2response.token = ", response.token);
+                
+                await saveTokenData({
+                    token: response.token,
+                });
+                router.replace("./main");
             } else {
-                await saveCourierData({ ...response.userData });
+                console.log(response.error);
+                Alert.alert("Ошибка", "Неверный логин или пароль");
             }
-
-            console.log("2response.token = ", response.token);
-            
-
-            await saveTokenData({
-                token: response.token,
-            });
-            router.push("./main");
-        } else {
-            console.log(response.error);
-            Alert.alert("Ошибка", "Неверный логин или пароль");
+        } catch (error) {
+            console.error("Ошибка при входе:", error);
+            Alert.alert("Ошибка", "Неправильный логин или пароль");
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     }
 
     return (

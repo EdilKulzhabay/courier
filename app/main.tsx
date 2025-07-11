@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
-import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { apiService } from "../api/services";
 import MyButton from "../components/MyButton";
 import MySwitchToggle from "../components/MySwitchToggle";
@@ -11,6 +11,8 @@ const Main = () => {
     const router = useRouter();
     const [courier, setCourier] = useState<CourierData | null>(null);
     const [order, setOrder] = useState<Order | null>(null);
+    const [capacity12, setCapacity12] = useState<number>(0);
+    const [capacity19, setCapacity19] = useState<number>(0);
 
     const [inActiveModal, setInActiveModal] = useState(false);
 
@@ -19,6 +21,8 @@ const Main = () => {
         await updateCourierData(courierData.userData);
         if (courierData.success) {
             setCourier(courierData.userData);
+            setCapacity12(courierData.userData.capacity12 || 0);
+            setCapacity19(courierData.userData.capacity19 || 0);
             if (courierData.userData.order.orderId) {
                 setOrder(courierData.userData.order)
             } else {
@@ -89,16 +93,86 @@ const Main = () => {
                 </View>
 
                 <View style={styles.incomeCard}>
-                <View>
-                    <Text style={styles.incomeTitle}>Сегодня вы заработали:</Text>
-                </View>
+                    <View>
+                        <Text style={styles.incomeTitle}>Сегодня вы заработали:</Text>
+                    </View>
 
-                <View style={styles.incomeAmount}>
-                    <View style={styles.incomeRow}>
-                    <Text style={styles.incomeValue}>{courier?.income}</Text>
-                    <Text style={styles.incomeCurrency}>₸</Text>
+                    <View style={styles.incomeAmount}>
+                        <View style={styles.incomeRow}>
+                        <Text style={styles.incomeValue}>{courier?.income}</Text>
+                        <Text style={styles.incomeCurrency}>₸</Text>
+                        </View>
                     </View>
                 </View>
+
+                <View style={styles.capacityCard}>
+                    <Text style={styles.capacityTitle}>Количество бутылей:</Text>
+                    <View style={styles.capacityRow}>
+                        <View style={styles.capacityItem}>
+                            <Text style={styles.capacityLabel}>12,5л:</Text>
+                            <TextInput
+                                style={styles.capacityInput}
+                                keyboardType="numeric"
+                                value={String(capacity12)}
+                                onChangeText={(text) => {
+                                    const value = parseInt(text) || 0;
+                                    setCapacity12(value);
+                                }}
+                                // onEndEditing={async () => {
+                                //     // Вызывается когда пользователь закончил ввод
+                                //     console.log("onEndEditing = ", capacity12);
+                                //     // if (courier?._id) {
+                                //     //     try {
+                                //     //         await apiService.updateData(courier._id, "capacity12", capacity12);
+                                //     //     } catch (error) {
+                                //     //         console.error('Ошибка при обновлении:', error);
+                                //     //     }
+                                //     // }
+                                // }}
+                                // onBlur={() => {
+                                //     // Вызывается когда поле теряет фокус
+                                //     console.log("Поле потеряло фокус");
+                                // }}
+                                // returnKeyType="done"
+                                // onSubmitEditing={() => {
+                                //     // Вызывается при нажатии кнопки Done/Enter на клавиатуре
+                                //     console.log("Нажата кнопка Done");
+                                // }}
+                            />
+                        </View>
+                        <View style={styles.capacityItem}>
+                            <Text style={styles.capacityLabel}>19,8л:</Text>
+                            <TextInput
+                                style={styles.capacityInput}
+                                keyboardType="numeric" 
+                                value={String(capacity19)}
+                                onChangeText={async (text) => {
+                                    const value = parseInt(text) || 0;
+                                    setCapacity19(value);
+                                }}
+                            />
+                        </View>
+                    </View>
+                    <View style={styles.capacityButtonContainer}>
+                        <MyButton
+                            title="Сохранить"
+                            onPress={async () => {
+                                if (courier?._id && capacity12 !== courier?.capacity12 && capacity19 !== courier?.capacity19) {
+                                    try {
+                                        await apiService.updateData(courier._id, "capacities", {
+                                            capacity12: capacity12,
+                                            capacity19: capacity19
+                                        });
+                                    } catch (error) {
+                                        console.error('Ошибка при обновлении:', error);
+                                    }
+                                }
+                            }}
+                            variant="contained"
+                            width="full"
+                            disabled={capacity12 === courier?.capacity12 && capacity19 === courier?.capacity19}
+                        />
+                    </View>
                 </View>
             </View>
 
@@ -329,7 +403,7 @@ const styles = StyleSheet.create({
         marginLeft: 12
     },
     orderSection: {
-        marginTop: 78,
+        marginTop: 38,
         borderTopWidth: 2,
         borderColor: '#c4c2c2',
         paddingTop: 32,
@@ -363,10 +437,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
-        elevation: 2,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center'
+        elevation: 2
     },
     orderDetails: {
         width: '85%'
@@ -464,6 +535,39 @@ const styles = StyleSheet.create({
     },
     modalButton: {
         marginTop: 40
+    },
+    capacityCard: {
+        marginTop: 16,
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    capacityTitle: {
+        fontSize: 14
+    },
+    capacityRow: {
+        flexDirection: 'row'
+    },
+    capacityItem: {
+        flex: 1,
+        marginRight: 8
+    },
+    capacityLabel: {
+        fontSize: 14
+    },
+    capacityInput: {
+        borderWidth: 1,
+        borderColor: '#E5E5EA',
+        borderRadius: 8,
+        padding: 8
+    },
+    capacityButtonContainer: {
+        marginTop: 10
     }
 });
 

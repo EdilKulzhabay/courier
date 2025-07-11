@@ -72,6 +72,8 @@ export interface CourierData {
         kol: number;
         date: Date;
     };
+    capacity12?: number;
+    capacity19?: number;
     createdAt: string;
     updatedAt: string;
 }

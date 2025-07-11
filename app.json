@@ -7,17 +7,24 @@
     "icon": "./assets/images/icon.png",
     "scheme": "tibetskayacourier",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tibetskayacourier.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": ["remote-notification", "location", "fetch", "processing"],
+        "UIBackgroundModes": [
+          "remote-notification",
+          "location",
+          "fetch",
+          "processing"
+        ],
         "NSLocationWhenInUseUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов",
         "NSLocationAlwaysUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов",
-        "BGTaskSchedulerPermittedIdentifiers": ["com.tibetskayacourier.app.refresh"]
+        "BGTaskSchedulerPermittedIdentifiers": [
+          "com.tibetskayacourier.app.refresh"
+        ]  
       },
       "googleServicesFile": "./GoogleService-Info.plist"
     },
@@ -32,11 +39,15 @@
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "WAKE_LOCK",
-        "FOREGROUND_SERVICE",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION"
-      ]
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE"
+      ],
+      "foregroundService": {
+        "notificationTitle": "Отслеживание местоположения",
+        "notificationBody": "Ваше местоположение отправляется для доставки заказов"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -59,6 +70,18 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#DC3F34"
+        }
+      ],
+      "expo-background-task",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
         }
       ]
     ],

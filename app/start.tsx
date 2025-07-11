@@ -17,7 +17,7 @@ const StartScreen = () => {
           const res = await apiService.getData();
           if (res.success && res.userData) {
               await updateCourierData(res.userData);
-              router.push("./main")
+              router.replace("./main")
           }
           return null;
       } catch (error) {
@@ -63,7 +63,7 @@ const StartScreen = () => {
                   variant="contained"
                   disabled={false}
                   width="full"
-                  onPress={() => router.push('/register')}
+                  onPress={() => router.push('/main')}
               />
               </View>
               <TouchableOpacity

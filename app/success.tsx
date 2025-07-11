@@ -25,7 +25,7 @@ const Success = () => {
                     Вернитесь на главную страницу, чтобы получить следующий заказ!
                 </Text>
                 <View style={styles.buttonContainer}>
-                    <MyButton title="Вернуться на главную" onPress={() => router.push("./main")} />
+                    <MyButton title="Вернуться на главную" onPress={() => router.replace("./main")} />
                 </View>
             </View>
             
