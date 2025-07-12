@@ -17,14 +17,19 @@
           "remote-notification",
           "location",
           "fetch",
-          "processing"
+          "processing",
+          "background-location"
         ],
         "NSLocationWhenInUseUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов",
-        "NSLocationAlwaysUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов, даже когда приложение не активно",
+        "NSLocationAlwaysUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов в фоновом режиме",
+        "NSLocationTemporaryUsageDescriptionDictionary": {
+          "DeliveryTracking": "Отслеживание местоположения необходимо для доставки заказов клиентам"
+        },
         "BGTaskSchedulerPermittedIdentifiers": [
-          "com.tibetskayacourier.app.refresh"
-        ]  
+          "com.tibetskayacourier.app.refresh",
+          "com.tibetskayacourier.app.location"
+        ]
       },
       "googleServicesFile": "./GoogleService-Info.plist"
     },
@@ -42,7 +47,8 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
-        "FOREGROUND_SERVICE"
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
       ],
       "foregroundService": {
         "notificationTitle": "Отслеживание местоположения",

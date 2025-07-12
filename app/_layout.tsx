@@ -61,14 +61,23 @@ const LOCATION_TASK_NAME = 'background-location-task';
 
 declare global {
   var courierId: string | undefined;
+  var isOnline: boolean | undefined;
 }
 
 // Функция для отправки геолокации
 const sendLocationToServer = async (location: any, source: string) => {
     try {
         const courierId = global.courierId;
+        const isOnline = global.isOnline;
+        
         if (!courierId) {
             console.warn(`⚠️ ${source}: Нет ID курьера для отправки геолокации`);
+            return false;
+        }
+
+        // Проверяем, что пользователь онлайн
+        if (!isOnline) {
+            console.log(`ℹ️ ${source}: Пользователь не в сети, пропускаем отправку геолокации`);
             return false;
         }
 
@@ -107,7 +116,13 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
         if (locations && locations.length > 0) {
             const location = locations[0];
             console.log('📍 ОСНОВНАЯ ЗАДАЧА: Новая позиция при движении');
-            await sendLocationToServer(location, 'ДВИЖЕНИЕ');
+            
+            // Проверяем онлайн статус перед отправкой
+            if (global.isOnline) {
+                await sendLocationToServer(location, 'ДВИЖЕНИЕ');
+            } else {
+                console.log('ℹ️ ОСНОВНАЯ ЗАДАЧА: Пользователь не в сети, пропускаем отправку');
+            }
         }
     }
 });
@@ -333,9 +348,11 @@ export default function RootLayout() {
         if (!courier?._id) return;
         
         global.courierId = courier._id;
+        global.isOnline = courier.onTheLine; // Устанавливаем онлайн статус
         
         const startLocationTracking = async () => {
             console.log('🚀 Запуск отслеживания геолокации...');
+            console.log('📊 Статус курьера: ID =', courier._id, ', Онлайн =', courier.onTheLine);
             
             // Запрашиваем все необходимые разрешения
             const hasPermissions = await requestPermissions();
@@ -376,7 +393,7 @@ export default function RootLayout() {
             // Очистка при размонтировании компонента
             Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME).catch(console.error);
         };
-    }, [courier?._id]);
+    }, [courier?._id, courier?.onTheLine]); // Добавляем зависимость от onTheLine
 
     return (
         <SafeAreaView style={{flex: 1}}>

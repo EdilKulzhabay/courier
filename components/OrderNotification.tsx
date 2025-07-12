@@ -186,6 +186,7 @@ const OrderNotification: React.FC<OrderNotificationProps> = ({
                         <View>
                             <Text style={styles.orderTitle}>Новый заказ:</Text>
                             <Text style={styles.orderSum}>{order.income} ₸</Text>
+                            <Text style={styles.orderComment}>{order.comment}</Text>
                         </View>
                         <TouchableOpacity onPress={expandNotification}>
                             <Text style={styles.expandButton}>Развернуть</Text>
@@ -221,6 +222,12 @@ const OrderNotification: React.FC<OrderNotificationProps> = ({
                                     <Text style={styles.addressValue}>{order.clientAddress}</Text>
                                 </View>
                             </View>
+                        </View>
+
+                        {/* Комментарий */}
+                        <View style={styles.commentContainer}>
+                            <Text style={styles.commentLabel}>Комментарий:</Text>
+                            <Text style={styles.commentValue}>{order.comment}</Text>
                         </View>
 
                         {/* Кнопки действий */}
@@ -307,6 +314,11 @@ const styles = StyleSheet.create({
     orderSum: {
         color: '#707070'
     },
+    orderComment: {
+        color: '#707070',
+        fontSize: 12,
+        marginTop: 4
+    },
     expandButton: {
         color: '#DC1818'
     },
@@ -355,6 +367,18 @@ const styles = StyleSheet.create({
     addressValue: {
         color: 'black',
         fontSize: 18,
+        marginTop: 4
+    },
+    commentContainer: {
+        marginTop: 24
+    },
+    commentLabel: {
+        color: '#707070',
+        fontSize: 14
+    },
+    commentValue: {
+        color: 'black',
+        fontSize: 16,
         marginTop: 4
     },
     buttonContainer: {

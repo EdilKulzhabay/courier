@@ -1,11 +1,16 @@
+import * as Location from 'expo-location';
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
-import { Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, BackHandler, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { apiService } from "../api/services";
 import MyButton from "../components/MyButton";
 import MySwitchToggle from "../components/MySwitchToggle";
 import { CourierData, Order } from "../types/interfaces";
-import { updateCourierData } from "../utils/storage";
+import { removeCourierData, removeNotificationTokenData, removeTokenData, updateCourierData } from "../utils/storage";
+
+declare global {
+    var isOnline: boolean | undefined;
+}
 
 const Main = () => {
     const router = useRouter();
@@ -13,6 +18,8 @@ const Main = () => {
     const [order, setOrder] = useState<Order | null>(null);
     const [capacity12, setCapacity12] = useState<number>(0);
     const [capacity19, setCapacity19] = useState<number>(0);
+    const [loading, setLoading] = useState(false);
+    const [income, setIncome] = useState<number>(0);
 
     const [inActiveModal, setInActiveModal] = useState(false);
 
@@ -31,20 +38,123 @@ const Main = () => {
         }
     };
 
+    const getIncome = useCallback(async () => {
+        try {
+            const incomeData = await apiService.getIncome();
+            if (incomeData.success) {
+                setIncome(incomeData.income);
+            }
+        } catch (error) {
+            console.error('Ошибка при получении дохода:', error);
+        }
+    }, []);
+
+    const handleBackPress = useCallback(() => {
+        Alert.alert(
+            "Выход",
+            "Вы действительно хотите выйти из аккаунта?",
+            [
+                {
+                    text: "Отмена",
+                    style: "cancel"
+                },
+                {
+                    text: "Выйти",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            if (courier?._id) {
+                                await apiService.updateData(courier._id, "onTheLine", false);
+                            }
+                            await removeTokenData();
+                            await removeCourierData();
+                            await removeNotificationTokenData();
+                            router.replace("./start");
+                        } catch (error) {
+                            console.error('Ошибка при выходе:', error);
+                        }
+                    }
+                }
+            ]
+        );
+        return true; // Предотвращаем стандартное поведение
+    }, [courier, router]);
+
     useFocusEffect(
         useCallback(() => {
             fetchCourierData();
-        }, [])
+            getIncome();
+        }, [getIncome])
     );
+
+    // Отдельный useEffect для обработчика кнопки "Назад"
+    useFocusEffect(
+        useCallback(() => {
+            const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+            
+            return () => {
+                backHandler.remove();
+            };
+        }, [handleBackPress])
+    );
+
+    // Функция для получения и отправки текущего местоположения
+    const sendCurrentLocation = async (source: string) => {
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                console.warn('⚠️ Нет разрешения на геолокацию');
+                return false;
+            }
+
+            const location = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+            });
+
+            if (courier?._id) {
+                const timestamp = new Date(location.timestamp);
+                timestamp.setHours(timestamp.getHours() + 5);
+
+                const locationData = {
+                    lat: location.coords.latitude,
+                    lon: location.coords.longitude,
+                    timestamp: timestamp,
+                    accuracy: location.coords.accuracy,
+                    source: source
+                };
+
+                console.log(`📍 ${source}: Отправляем геолокацию:`, locationData);
+                await apiService.updateData(courier._id, "point", locationData);
+                console.log(`✅ ${source}: Геолокация успешно отправлена`);
+                return true;
+            }
+        } catch (error) {
+            console.error(`❌ ${source}: Ошибка получения/отправки геолокации:`, error);
+            return false;
+        }
+    };
 
     const changeOnTheLine = async () => {
         const courierData = await apiService.getData();
         const orderData = courierData.userData.order;
         
         if (courierData?.userData?._id && !orderData?.orderId) {
-            const res = await apiService.updateData(courierData?.userData?._id, "onTheLine", !courierData?.userData?.onTheLine);
+            const newOnlineStatus = !courierData?.userData?.onTheLine;
+
+            if (newOnlineStatus) {
+                console.log('📍 Пользователь перешел в онлайн, отправляем текущее местоположение');
+                await sendCurrentLocation('ПЕРЕХОД_В_ОНЛАЙН');
+            } else {
+                console.log('📴 Пользователь перешел в офлайн, отправка геолокации остановлена');
+            }
+
+            const res = await apiService.updateData(courierData?.userData?._id, "onTheLine", newOnlineStatus);
+            
             if (res.success) {
-                setCourier({...courierData?.userData, onTheLine: !courierData?.userData?.onTheLine});
+                setCourier({...courierData?.userData, onTheLine: newOnlineStatus});
+                
+                // Обновляем глобальный статус
+                global.isOnline = newOnlineStatus;
             }
         } else {
             alert("Вы не можете изменить статус, пока не выполните существующий заказ")
@@ -64,200 +174,192 @@ const Main = () => {
                 </TouchableOpacity>
             </View>
 
-
-            <View style={styles.profileSection}>
-                <View style={styles.profileCard}>
-                <View style={styles.profileInfo}>
-                    <View style={styles.avatar}></View>
-                    <View style={styles.profileTextContainer}>
-                    <Text style={styles.profileName}>{courier?.fullName}</Text>
-                    <Text style={styles.profileStatus}>
-                        {courier?.onTheLine && courier?.status === "active" && "В сети"}
-                        {!courier?.onTheLine && courier?.status === "active" && "Не в сети"}
-                        {courier?.status === "inActive" && "Ограничен"}
-                    </Text>
-                    </View>
-                </View>
-
-                <View style={styles.statusContainer}>
-                    <View>
-                    <Text style={styles.statusText}>{courier?.onTheLine ? "Online" : "Offline"}</Text>
-                    </View>
-                    <View style={styles.switchContainer}>
-                        {courier?.status === "active" && <MySwitchToggle value={courier?.onTheLine} onPress={changeOnTheLine} />}
-                        {courier?.status !== "active" && <View style={styles.disabledSwitch}>
-                            <View style={styles.disabledSwitchThumb}></View>  
-                        </View>}
-                    </View>
-                </View>
-                </View>
-
-                <View style={styles.incomeCard}>
-                    <View>
-                        <Text style={styles.incomeTitle}>Сегодня вы заработали:</Text>
-                    </View>
-
-                    <View style={styles.incomeAmount}>
-                        <View style={styles.incomeRow}>
-                        <Text style={styles.incomeValue}>{courier?.income}</Text>
-                        <Text style={styles.incomeCurrency}>₸</Text>
+            <ScrollView 
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                <View style={styles.profileSection}>
+                    <View style={styles.profileCard}>
+                    <View style={styles.profileInfo}>
+                        <View style={styles.avatar}></View>
+                        <View style={styles.profileTextContainer}>
+                        <Text style={styles.profileName}>{courier?.fullName}</Text>
+                        <Text style={styles.profileStatus}>
+                            {courier?.onTheLine && courier?.status === "active" && "В сети"}
+                            {!courier?.onTheLine && courier?.status === "active" && "Не в сети"}
+                            {courier?.status === "inActive" && "Ограничен"}
+                        </Text>
                         </View>
                     </View>
-                </View>
 
-                <View style={styles.capacityCard}>
-                    <Text style={styles.capacityTitle}>Количество бутылей:</Text>
-                    <View style={styles.capacityRow}>
-                        <View style={styles.capacityItem}>
-                            <Text style={styles.capacityLabel}>12,5л:</Text>
-                            <TextInput
-                                style={styles.capacityInput}
-                                keyboardType="numeric"
-                                value={String(capacity12)}
-                                onChangeText={(text) => {
-                                    const value = parseInt(text) || 0;
-                                    setCapacity12(value);
-                                }}
-                                // onEndEditing={async () => {
-                                //     // Вызывается когда пользователь закончил ввод
-                                //     console.log("onEndEditing = ", capacity12);
-                                //     // if (courier?._id) {
-                                //     //     try {
-                                //     //         await apiService.updateData(courier._id, "capacity12", capacity12);
-                                //     //     } catch (error) {
-                                //     //         console.error('Ошибка при обновлении:', error);
-                                //     //     }
-                                //     // }
-                                // }}
-                                // onBlur={() => {
-                                //     // Вызывается когда поле теряет фокус
-                                //     console.log("Поле потеряло фокус");
-                                // }}
-                                // returnKeyType="done"
-                                // onSubmitEditing={() => {
-                                //     // Вызывается при нажатии кнопки Done/Enter на клавиатуре
-                                //     console.log("Нажата кнопка Done");
-                                // }}
-                            />
+                    <View style={styles.statusContainer}>
+                        <View>
+                        <Text style={styles.statusText}>{courier?.onTheLine ? "Online" : "Offline"}</Text>
                         </View>
-                        <View style={styles.capacityItem}>
-                            <Text style={styles.capacityLabel}>19,8л:</Text>
-                            <TextInput
-                                style={styles.capacityInput}
-                                keyboardType="numeric" 
-                                value={String(capacity19)}
-                                onChangeText={async (text) => {
-                                    const value = parseInt(text) || 0;
-                                    setCapacity19(value);
-                                }}
-                            />
+                        <View style={styles.switchContainer}>
+                            {courier?.status === "active" && <MySwitchToggle value={courier?.onTheLine} onPress={changeOnTheLine} />}
+                            {courier?.status !== "active" && <View style={styles.disabledSwitch}>
+                                <View style={styles.disabledSwitchThumb}></View>  
+                            </View>}
                         </View>
                     </View>
-                    <View style={styles.capacityButtonContainer}>
-                        <MyButton
-                            title="Сохранить"
-                            onPress={async () => {
-                                if (courier?._id && capacity12 !== courier?.capacity12 && capacity19 !== courier?.capacity19) {
-                                    try {
-                                        await apiService.updateData(courier._id, "capacities", {
-                                            capacity12: capacity12,
-                                            capacity19: capacity19
-                                        });
-                                    } catch (error) {
-                                        console.error('Ошибка при обновлении:', error);
+                    </View>
+
+                    <View style={styles.incomeCard}>
+                        <View>
+                            <Text style={styles.incomeTitle}>Сегодня вы заработали:</Text>
+                        </View>
+
+                        <View style={styles.incomeAmount}>
+                            <View style={styles.incomeRow}>
+                            <Text style={styles.incomeValue}>{income}</Text>
+                            <Text style={styles.incomeCurrency}>₸</Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    <View style={styles.capacityCard}>
+                        <Text style={styles.capacityTitle}>Количество бутылей:</Text>
+                        <View style={styles.capacityRow}>
+                            <View style={styles.capacityItem}>
+                                <Text style={styles.capacityLabel}>12,5л:</Text>
+                                <TextInput
+                                    style={styles.capacityInput}
+                                    keyboardType="numeric"
+                                    value={String(capacity12)}
+                                    onChangeText={(text) => {
+                                        const value = parseInt(text) || 0;
+                                        setCapacity12(value);
+                                    }}
+                                />
+                            </View>
+                            <View style={styles.capacityItem}>
+                                <Text style={styles.capacityLabel}>19,8л:</Text>
+                                <TextInput
+                                    style={styles.capacityInput}
+                                    keyboardType="numeric" 
+                                    value={String(capacity19)}
+                                    onChangeText={async (text) => {
+                                        const value = parseInt(text) || 0;
+                                        setCapacity19(value);
+                                    }}
+                                />
+                            </View>
+                        </View>
+                        <View style={styles.capacityButtonContainer}>
+                            <MyButton
+                                title="Сохранить"
+                                onPress={async () => {
+                                    if (courier && courier?._id && (capacity12 !== courier?.capacity12 || capacity19 !== courier?.capacity19)) {
+                                        try {
+                                            setLoading(true);
+                                            const res = await apiService.updateData(courier._id, "capacities", {
+                                                capacity12: capacity12,
+                                                capacity19: capacity19
+                                            });
+                                            if (res.success) {
+                                                setCourier({...courier, capacity12: capacity12, capacity19: capacity19});
+                                            }
+                                            setLoading(false);
+                                        } catch (error) {
+                                            console.error('Ошибка при обновлении:', error);
+                                            setLoading(false);
+                                        }
                                     }
-                                }
-                            }}
-                            variant="contained"
-                            width="full"
-                            disabled={capacity12 === courier?.capacity12 && capacity19 === courier?.capacity19}
-                        />
+                                }}
+                                variant="contained"
+                                width="full"
+                                disabled={capacity12 === courier?.capacity12 && capacity19 === courier?.capacity19}
+                                loading={loading}
+                            />
+                        </View>
                     </View>
                 </View>
-            </View>
 
-            <View style={styles.orderSection}>
-                {courier?.status === "active" && courier?.onTheLine && <View style={styles.centerContent}>
-                    {order === null ? <>
+                <View style={styles.orderSection}>
+                    {courier?.status === "active" && courier?.onTheLine && <View style={styles.centerContent}>
+                        {order === null ? <>
+                            <Image
+                                source={require("../assets/images/box.png")}
+                                style={{width: 42, height: 42}}
+                                resizeMode="contain"
+                            />  
+                            <View>
+                                <Text style={styles.noOrderTitle}>Заявок пока нет</Text>
+                                <Text style={styles.noOrderSubtitle}>Тут будут доступны входящие заявки</Text>
+                            </View>
+                        </>
+                        : 
+                        <TouchableOpacity style={styles.fullWidth} onPress={() => {router.push("./orderStatus")}}>
+                            <View style={styles.orderCard}>
+                                <View style={styles.orderDetails}>
+                                    {order?.products?.b12 > 0 && <Text style={styles.orderItem}>{`12,5л: ${order?.products?.b12} бутылей`}</Text>}
+                                    {order?.products?.b19 > 0 && <Text style={styles.orderItem}>{`19,8л: ${order?.products?.b19} бутылей`}</Text>}
+
+                                    <Text style={styles.addressLabel}>Адресс:</Text>
+                                    <Text style={styles.addressValue}>{order.clientAddress}</Text>
+
+                                    <Text style={styles.orderPrice}>({order?.sum} ₸)</Text>
+                                </View>
+                                <Image
+                                    source={require("../assets/images/arrowRight.png")}
+                                    style={{width: 20, height: 20, marginLeft: 10}}
+                                    resizeMode="contain"
+                                />
+                            </View>
+                        </TouchableOpacity>
+                        }
+                        
+                    </View>
+                    }
+
+                    {courier?.status === "active" && !courier?.onTheLine && <View style={styles.centerContent}>
                         <Image
-                            source={require("../assets/images/box.png")}
+                            source={require("../assets/images/wifi.png")}
                             style={{width: 42, height: 42}}
                             resizeMode="contain"
                         />  
-                        <View>
-                            <Text style={styles.noOrderTitle}>Заявок пока нет</Text>
-                            <Text style={styles.noOrderSubtitle}>Тут будут доступны входящие заявки</Text>
-                        </View>
-                    </>
-                    : 
-                    <TouchableOpacity style={styles.fullWidth} onPress={() => {router.push("./orderStatus")}}>
-                        <View style={styles.orderCard}>
-                            <View style={styles.orderDetails}>
-                                {order?.products?.b12 > 0 && <Text style={styles.orderItem}>{`12,5л: ${order?.products?.b12} бутылей`}</Text>}
-                                {order?.products?.b19 > 0 && <Text style={styles.orderItem}>{`19,8л: ${order?.products?.b19} бутылей`}</Text>}
 
-                                <Text style={styles.addressLabel}>Адресс:</Text>
-                                <Text style={styles.addressValue}>{order.clientAddress}</Text>
+                        <Text style={styles.offlineTitle}>Вы не в сети!</Text>
+                        <Text style={styles.offlineSubtitle}>Войдите в онлайн, чтобы получать заказы</Text>
+                    </View>}
 
-                                <Text style={styles.orderPrice}>({order?.sum} ₸)</Text>
-                            </View>
+                    {courier?.status === "inActive" && <View>
+                        <View style={styles.centeredIcon}>
                             <Image
-                                source={require("../assets/images/arrowRight.png")}
-                                style={{width: 20, height: 20, marginLeft: 10}}
-                                resizeMode="contain"
+                            source={require("../assets/images/danger.png")}
+                            style={{width: 42, height: 42}}
+                            resizeMode="contain"
+                            />  
+                        </View>
+
+                        <Text style={styles.blockedTitle}>Заказы не доступны!</Text>
+                        <Text style={styles.blockedSubtitle}>Вы временно ограничены в получении заказов.</Text>
+
+                        <View style={styles.blockInfoButtonContainer}>
+                            <MyButton
+                            title="Узнать причину блокировки"
+                            onPress={() => {setInActiveModal(true)}}
+                            variant="outlined"
+                            width="full"
                             />
                         </View>
-                    </TouchableOpacity>
+                    </View>
                     }
-                    
-                </View>
-                }
 
-                {courier?.status === "active" && !courier?.onTheLine && <View style={styles.centerContent}>
+                    {courier?.status === "awaitingVerfication" && <View style={styles.centerContent}>
                     <Image
-                        source={require("../assets/images/wifi.png")}
+                        source={require("../assets/images/danger.png")}
                         style={{width: 42, height: 42}}
                         resizeMode="contain"
                     />  
 
-                    <Text style={styles.offlineTitle}>Вы не в сети!</Text>
-                    <Text style={styles.offlineSubtitle}>Войдите в онлайн, чтобы получать заказы</Text>
-                </View>}
-
-                {courier?.status === "inActive" && <View>
-                    <View style={styles.centeredIcon}>
-                        <Image
-                        source={require("../assets/images/danger.png")}
-                        style={{width: 42, height: 42}}
-                        resizeMode="contain"
-                        />  
-                    </View>
-
-                    <Text style={styles.blockedTitle}>Заказы не доступны!</Text>
-                    <Text style={styles.blockedSubtitle}>Вы временно ограничены в получении заказов.</Text>
-
-                    <View style={styles.blockInfoButtonContainer}>
-                        <MyButton
-                        title="Узнать причину блокировки"
-                        onPress={() => {setInActiveModal(true)}}
-                        variant="outlined"
-                        width="full"
-                        />
-                    </View>
+                    <Text style={styles.verificationTitle}>Ожидание верификации</Text>
+                    <Text style={styles.verificationSubtitle}>Заявки будут доступны после верификации</Text>
+                    </View>}
                 </View>
-                }
-
-                {courier?.status === "awaitingVerfication" && <View style={styles.centerContent}>
-                <Image
-                    source={require("../assets/images/danger.png")}
-                    style={{width: 42, height: 42}}
-                    resizeMode="contain"
-                />  
-
-                <Text style={styles.verificationTitle}>Ожидание верификации</Text>
-                <Text style={styles.verificationSubtitle}>Заявки будут доступны после верификации</Text>
-                </View>}
-            </View>
+            </ScrollView>
 
             <Modal
                 visible={inActiveModal}
@@ -568,6 +670,12 @@ const styles = StyleSheet.create({
     },
     capacityButtonContainer: {
         marginTop: 10
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingBottom: 30, // Add padding at the bottom for the modal
     }
 });
 

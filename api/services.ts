@@ -109,5 +109,14 @@ export const apiService = {
         } catch (error) {
             throw error;
         }
+    },
+
+    getIncome: async () => {
+        try {
+            const response = await api.get('/getCourierAggregatorIncome');
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
     }
 };

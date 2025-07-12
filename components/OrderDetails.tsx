@@ -180,6 +180,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
                                 width="full"
                             />
                         </View>
+                        <View>
+                            <Text style={styles.subTitle}>Комментарий: {order.comment}</Text>
+                        </View>
                         <View style={styles.detailsContainer}>
                             {order.products.b12 > 0 && (
                                 <View style={styles.itemRow}>
