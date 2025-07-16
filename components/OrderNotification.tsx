@@ -4,6 +4,7 @@ import { saveOrderData } from '@/utils/storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import MyButton from './MyButton';
 export interface OrderNotificationProps {
     isVisible: boolean;      // Флаг видимости уведомления
     onAccept: () => void;    // Колбэк при принятии заказа
@@ -38,6 +39,8 @@ const OrderNotification: React.FC<OrderNotificationProps> = ({
     
     // Состояние сворачивания
     const [isCollapsed, setIsCollapsed] = useState(false);
+
+    const [acceptLoading, setAcceptLoading] = useState(false)
 
     // Настройка обработчика жестов для свайпов
     const panResponder = useRef(
@@ -245,14 +248,9 @@ const OrderNotification: React.FC<OrderNotificationProps> = ({
                             ) : (
                             // Кнопки принятия/отказа от заказа
                                 <>
-                                    <TouchableOpacity
-                                        onPress={handleAccept}
-                                        style={styles.primaryButton}
-                                    >
-                                        <Text style={styles.buttonText}>
-                                            Принять
-                                        </Text>
-                                    </TouchableOpacity>
+                                    <MyButton
+                                        title="Принять" onPress={handleAccept} disabled={acceptLoading} loading={acceptLoading}
+                                    />
 
                                     <TouchableOpacity
                                         onPress={handleDecline}

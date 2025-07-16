@@ -118,5 +118,14 @@ export const apiService = {
         } catch (error) {
             throw error;
         }
+    },
+
+    orTools: async () => {
+        try {
+            const response = await api.get('/orTools');
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
     }
 };

@@ -121,6 +121,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
                     pathname: '/success' as any,
                     params: { formData: JSON.stringify(income) }
                 });
+                await apiService.orTools();
             }
         }
         setCompleteOrderLoading(false);

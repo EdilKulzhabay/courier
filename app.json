@@ -17,8 +17,7 @@
           "remote-notification",
           "location",
           "fetch",
-          "processing",
-          "background-location"
+          "processing"
         ],
         "NSLocationWhenInUseUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Приложению необходим доступ к геолокации для отслеживания вашего местоположения при доставке заказов, даже когда приложение не активно",

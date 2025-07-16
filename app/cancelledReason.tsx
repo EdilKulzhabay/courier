@@ -1,6 +1,7 @@
 import { apiService } from "@/api/services";
 import MyButton from "@/components/MyButton";
 import OutlinedFilledLabelInput from "@/components/OutlinedFilledLabelInput";
+import { removeOrderData, updateCourierData } from "@/utils/storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -9,10 +10,21 @@ const CancelledReason = () => {
     const router = useRouter();
     const { formData } = useLocalSearchParams();
     const { orderId, income } = JSON.parse(formData as string);
+    const [isLoading, setIsLoading] = useState(false);
 
     const [reason, setReason] = useState("");
 
+    const fetchCourierData = async () => {
+        const courierData = await apiService.getData();
+        if (courierData.success) {
+            await updateCourierData(courierData.userData);
+        }
+    };
+
     const cancelOrder = async () => {
+        console.log("we in cancel order orderid = ", orderId, reason);
+        
+        setIsLoading(true);
         if (reason.length === 0) {
             Alert.alert("Внимание", "Пожалуйста, укажите причину отмены заказа");
             return;
@@ -21,10 +33,13 @@ const CancelledReason = () => {
         console.log(orderId, income);
         
         if (res.success) {
+            await removeOrderData();
+            setIsLoading(false);
             router.push({
                 pathname: '/cancelled' as any,
                 params: { formData: JSON.stringify(income) }
             });
+            // await apiService.orTools();
         } else {
             Alert.alert("Ошибка", res.message);
         }
@@ -54,7 +69,7 @@ const CancelledReason = () => {
                     </Text>
                 </View>
                 <View style={styles.buttonContainer}>
-                    <MyButton title="Сохранить" onPress={cancelOrder} />
+                    <MyButton title="Сохранить" onPress={cancelOrder} disabled={isLoading} loading={isLoading} />
                 </View>
             </View>
         </View>
