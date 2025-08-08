@@ -9,14 +9,12 @@ export interface OrderNotificationProps {
     isVisible: boolean;      // Флаг видимости уведомления
     onAccept: () => void;    // Колбэк при принятии заказа
     onDecline: () => void;   // Колбэк при отказе от заказа
-    onTimeout: () => void;   // Колбэк при истечении времени ожидания
     hideNotification: () => void;
     order: Order
     isAccepted?: boolean;    // Флаг принятия заказа
 }
 
 // Константы компонента
-const NOTIFICATION_TIMEOUT = 20000; // 20 секунд на принятие решения
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const COLLAPSED_HEIGHT = 80;  // Высота уведомления в свернутом состоянии
 const EXPANDED_HEIGHT = 300;  // Высота уведомления в развернутом состоянии
@@ -26,7 +24,6 @@ const OrderNotification: React.FC<OrderNotificationProps> = ({
     isVisible,
     onAccept,
     onDecline,
-    onTimeout,
     order,
     isAccepted = false,
 }) => {
@@ -35,8 +32,6 @@ const OrderNotification: React.FC<OrderNotificationProps> = ({
     const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
     
     // Ссылка на таймер автоматического скрытия
-    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    
     // Состояние сворачивания
     const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -73,25 +68,12 @@ const OrderNotification: React.FC<OrderNotificationProps> = ({
   // Эффект для управления видимостью и таймером
     useEffect(() => {
         if (isVisible) {
-        expandNotification(); // Показываем уведомление
-
-        if (!isAccepted) {
-            // Устанавливаем таймер на автоматическое скрытие
-            timeoutRef.current = setTimeout(() => {
-            hideNotification();
-            onTimeout();
-            }, NOTIFICATION_TIMEOUT);
-        }
+            expandNotification(); // Показываем уведомление
         } else {
-        hideNotification(); // Скрываем уведомление
+            hideNotification(); // Скрываем уведомление
         }
 
-        // Очистка таймера при размонтировании
-        return () => {
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-        }
-        };
+        return 
     }, [isVisible, isAccepted]);
 
   // Функция для разворачивания уведомления
@@ -125,9 +107,6 @@ const OrderNotification: React.FC<OrderNotificationProps> = ({
 
     // Обработчик принятия заказа
     const handleAccept = async () => {
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-        }
         const res = await apiService.acceptOrder(order);
         await saveOrderData(order);
         if (res.success) {
@@ -137,9 +116,6 @@ const OrderNotification: React.FC<OrderNotificationProps> = ({
 
   // Обработчик отказа от заказа
     const handleDecline = () => {
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-        }
         onDecline();
         hideNotification();
     };

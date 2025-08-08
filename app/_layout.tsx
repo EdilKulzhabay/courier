@@ -298,12 +298,6 @@ export default function RootLayout() {
         setCurrentOrder(null);
         setIsOrderAccepted(false);
     };
-    
-    const handleTimeout = () => {
-        setShowNotification(false);
-        setCurrentOrder(null);
-        setIsOrderAccepted(false);
-    };
 
     const hideNotification = () => {
         setShowNotification(false);
@@ -428,7 +422,6 @@ export default function RootLayout() {
                         isVisible={showNotification}
                         onAccept={handleAcceptOrder}
                         onDecline={handleDeclineOrder}
-                        onTimeout={handleTimeout}
                         hideNotification={hideNotification}
                         isAccepted={isOrderAccepted}
                         order={currentOrder}

@@ -1,7 +1,7 @@
 import * as Location from 'expo-location';
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
-import { Alert, BackHandler, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, BackHandler, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { apiService } from "../api/services";
 import MyButton from "../components/MyButton";
 import MySwitchToggle from "../components/MySwitchToggle";
@@ -223,8 +223,8 @@ const Main = () => {
                         <Text style={styles.capacityTitle}>Количество бутылей:</Text>
                         <View style={styles.capacityRow}>
                             <View style={styles.capacityItem}>
-                                <Text style={styles.capacityLabel}>12,5л:</Text>
-                                <TextInput
+                                <Text style={styles.capacityLabel}>12,5л: {capacity12}</Text>
+                                {/* <TextInput
                                     style={styles.capacityInput}
                                     keyboardType="numeric"
                                     value={String(capacity12)}
@@ -232,11 +232,11 @@ const Main = () => {
                                         const value = parseInt(text) || 0;
                                         setCapacity12(value);
                                     }}
-                                />
+                                /> */}
                             </View>
                             <View style={styles.capacityItem}>
-                                <Text style={styles.capacityLabel}>19,8л:</Text>
-                                <TextInput
+                                <Text style={styles.capacityLabel}>19,8л: {capacity19}</Text>
+                                {/* <TextInput
                                     style={styles.capacityInput}
                                     keyboardType="numeric" 
                                     value={String(capacity19)}
@@ -244,10 +244,10 @@ const Main = () => {
                                         const value = parseInt(text) || 0;
                                         setCapacity19(value);
                                     }}
-                                />
+                                /> */}
                             </View>
                         </View>
-                        <View style={styles.capacityButtonContainer}>
+                        {/* <View style={styles.capacityButtonContainer}>
                             <MyButton
                                 title="Сохранить"
                                 onPress={async () => {
@@ -273,7 +273,7 @@ const Main = () => {
                                 disabled={capacity12 === courier?.capacity12 && capacity19 === courier?.capacity19}
                                 loading={loading}
                             />
-                        </View>
+                        </View> */}
                     </View>
                 </View>
 
@@ -653,7 +653,8 @@ const styles = StyleSheet.create({
         fontSize: 14
     },
     capacityRow: {
-        flexDirection: 'row'
+        flexDirection: 'row',
+        marginTop: 16
     },
     capacityItem: {
         flex: 1,
