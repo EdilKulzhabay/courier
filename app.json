@@ -10,7 +10,7 @@
     "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tibetskayacourier.app",
+      "bundleIdentifier": "com.tibetskayacourier2.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
@@ -26,8 +26,8 @@
           "DeliveryTracking": "Отслеживание местоположения необходимо для доставки заказов клиентам"
         },
         "BGTaskSchedulerPermittedIdentifiers": [
-          "com.tibetskayacourier.app.refresh",
-          "com.tibetskayacourier.app.location"
+          "com.tibetskayacourier2.app.refresh",
+          "com.tibetskayacourier2.app.location"
         ]
       },
       "googleServicesFile": "./GoogleService-Info.plist"

@@ -2,24 +2,43 @@ import { useLocalSearchParams, useRouter } from "expo-router"
 import { useEffect, useState } from "react"
 import { Alert, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import { apiService } from "../api/services"
+import MyButton from "../components/MyButton"
 import { CourierData, Order } from "../types/interfaces"
+import { getCourierData } from "../utils/storage"
 
 const ChangeOrderBottles = () => {
     const router = useRouter();
     const params = useLocalSearchParams();
+    
+    // Парсим formData для получения всех параметров
+    const formData = params.formData ? JSON.parse(params.formData as string) : null;
+    const isFinish = formData?.isFinish || false;
+    const orderId = formData?.orderId;
+    const income = formData?.income;
+    const products = formData?.products;
+    
+    // Для обратной совместимости, если order передан напрямую
     const order = params.order ? JSON.parse(params.order as string) as Order : null;
 
     const [courier, setCourier] = useState<CourierData | null>(null);
     const [bottleCount12, setBottleCount12] = useState(0);
     const [bottleCount19, setBottleCount19] = useState(0);
+    const [completeOrderLoading, setCompleteOrderLoading] = useState(false);
 
     const fetchCourierData = async () => {
         const courierData = await apiService.getData();
         console.log("we in changeOrderBottles = ", courierData?.userData);
         
         setCourier(courierData?.userData)
-        setBottleCount12(courierData?.userData?.order?.products?.b12)
-        setBottleCount19(courierData?.userData?.order?.products?.b19)
+        
+        // Если isFinish=true, используем переданные продукты, иначе данные из API
+        if (isFinish && products) {
+            setBottleCount12(products.b12 || 0);
+            setBottleCount19(products.b19 || 0);
+        } else {
+            setBottleCount12(courierData?.userData?.order?.products?.b12 || 0);
+            setBottleCount19(courierData?.userData?.order?.products?.b19 || 0);
+        }
     };
 
     useEffect(() => {
@@ -52,6 +71,22 @@ const ChangeOrderBottles = () => {
             console.error('Ошибка при обновлении бутылей:', error);
             Alert.alert('Ошибка', 'Произошла ошибка при обновлении данных');
         }
+    };
+
+    const completeOrder = async () => {
+        setCompleteOrderLoading(true);
+        const courier = await getCourierData();
+        if (courier && orderId) {
+            const res = await apiService.completeOrder(orderId, courier._id, bottleCount12, bottleCount19);
+            if (res.success) {
+                const income = res.income;
+                router.push({
+                    pathname: '/success' as any,
+                    params: { formData: JSON.stringify(income) }
+                });
+            }
+        }
+        setCompleteOrderLoading(false);
     };
 
     return <View style={styles.container}>
@@ -92,7 +127,7 @@ const ChangeOrderBottles = () => {
             </View>
 
             <View style={styles.bottleCounter}>
-                <Text style={styles.counterTitle}>Количество бутылей 19.8</Text>
+                <Text style={styles.counterTitle}>Количество бутылей 18.9</Text>
                 <View style={styles.counterControls}>
                     <TouchableOpacity 
                         style={[styles.counterButton, bottleCount19 === 0 && styles.counterButtonDisabled]} 
@@ -115,12 +150,29 @@ const ChangeOrderBottles = () => {
                 </View>
             </View>
 
-            <TouchableOpacity 
-                style={styles.saveButton} 
-                onPress={handleSave}
-            >
-                <Text style={styles.saveButtonText}>Сохранить</Text>
-            </TouchableOpacity>
+            {!isFinish ? (
+                <TouchableOpacity 
+                    style={styles.saveButton} 
+                    onPress={handleSave}
+                >
+                    <Text style={styles.saveButtonText}>Сохранить</Text>
+                </TouchableOpacity>
+            ) : (
+                <View style={styles.finishContainer}>
+                    <Text style={styles.confirmationText}>
+                        Правильно ли указано количество бутылей?
+                    </Text>
+                    <View style={styles.confirmButton}>
+                        <MyButton
+                            title="Подтвердить"
+                            onPress={completeOrder}
+                            variant="contained"
+                            width="full"
+                            loading={completeOrderLoading}
+                        />
+                    </View>
+                </View>
+            )}
         </View>
     </View>
 }
@@ -215,6 +267,23 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
         fontWeight: '500'
+    },
+    finishContainer: {
+        marginTop: 24,
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 24,
+        alignItems: 'center'
+    },
+    confirmationText: {
+        fontSize: 18,
+        fontWeight: '500',
+        color: '#292D32',
+        textAlign: 'center',
+        marginBottom: 20
+    },
+    confirmButton: {
+        marginTop: 8
     }
 });
 

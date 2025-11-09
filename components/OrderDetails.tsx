@@ -3,7 +3,7 @@ import { Order } from "@/types/interfaces";
 import { getCourierData } from "@/utils/storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Dimensions, Image, Linking, PanResponder, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Animated, Dimensions, Image, Linking, Modal, PanResponder, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import MyButton from "./MyButton";
 
 interface OrderDetailsProps {
@@ -90,6 +90,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
 
     const [orderTakenLoading, setOrderTakenLoading] = useState(false);
     const [completeOrderLoading, setCompleteOrderLoading] = useState(false);
+    const [isPhoneModalVisible, setIsPhoneModalVisible] = useState(false);
+
+    // Функция для разделения номеров телефона
+    const getPhoneNumbers = (phoneString: string) => {
+        if (!phoneString) return [];
+        return phoneString.split(',').map(phone => phone.trim()).filter(phone => phone.length > 0);
+    };
 
     const handleOrderTaken = async () => {
         setOrderTakenLoading(true);
@@ -166,15 +173,25 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
                         <Text style={styles.title}>
                             Детали заказа:
                         </Text>
-                        <View>
+                        {/* <View>
                             <Text style={styles.subTitle}>Клиент: {order.clientTitle}</Text>
-                        </View>
+                        </View> */}
                         <View>
+                            <Text style={styles.subTitle}>Адрес: {order.clientAddress}</Text>
+                        </View>
+                        <View style={{ marginVertical: 8}}>
                             <MyButton
                                 title={`Номер: ${order.clientPhone}`}
                                 onPress={() => {
                                     if (order.clientPhone) {
-                                        Linking.openURL(`tel:${order.clientPhone}`);
+                                        const phoneNumbers = getPhoneNumbers(order.clientPhone);
+                                        if (phoneNumbers.length === 1) {
+                                            // Если только один номер, сразу звоним
+                                            Linking.openURL(`tel:${phoneNumbers[0]}`);
+                                        } else {
+                                            // Если несколько номеров, показываем модальное окно
+                                            setIsPhoneModalVisible(true);
+                                        }
                                     }
                                 }}
                                 variant="outlined"
@@ -225,12 +242,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
                             )}
                         </View>
 
-                        <TouchableOpacity
+                        {/* <TouchableOpacity
                             style={styles.helpSection}
                             onPress={() => {router.push("/changeOrderBottles")}}
                         >
                             <View style={styles.helpLeft}>
-                                {/* <Image source={require("../assets/images/question.png")} style={styles.questionIcon} resizeMode='contain' /> */}
                                 <Text style={styles.helpText}>
                                     Изменить количество бутылей?
                                 </Text>
@@ -239,7 +255,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
                             <View>
                                 <Image source={require("../assets/images/arrowRight.png")} style={styles.arrowIcon} resizeMode='contain' />
                             </View>
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
+
                         <View style={styles.buttonContainer}>
                             {order.step === 'toAquaMarket' ? (
                                 <MyButton
@@ -253,7 +270,19 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
                             ) : (
                                 <MyButton
                                     title="Отдать заказ"
-                                    onPress={completeOrder}
+                                    onPress={() => {
+                                        router.push({
+                                            pathname: '/changeOrderBottles' as any,
+                                            params: { 
+                                                formData: JSON.stringify({ 
+                                                    orderId: order.orderId, 
+                                                    income: order.income,
+                                                    isFinish: true,
+                                                    products: order.products
+                                                }) 
+                                            }
+                                        });
+                                    }}
                                     variant="contained"
                                     width="full"
                                     loading={completeOrderLoading}
@@ -276,6 +305,41 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
                     </View>
                 )}
             </View>
+
+            {/* Модальное окно для выбора номера телефона */}
+            <Modal
+                visible={isPhoneModalVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setIsPhoneModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Выберите номер телефона</Text>
+                        {getPhoneNumbers(order.clientPhone || '').map((phone, index) => (
+                            <View key={index} style={styles.phoneButton}>
+                                <MyButton
+                                    title={phone}
+                                    onPress={() => {
+                                        Linking.openURL(`tel:${phone}`);
+                                        setIsPhoneModalVisible(false);
+                                    }}
+                                    variant="outlined"
+                                    width="full"
+                                />
+                            </View>
+                        ))}
+                        <View style={styles.cancelButton}>
+                            <MyButton
+                                title="Отмена"
+                                onPress={() => setIsPhoneModalVisible(false)}
+                                variant="contained"
+                                width="full"
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </Animated.View>
     )
 }
@@ -401,6 +465,41 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 18,
         fontWeight: '500'
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        borderRadius: 20,
+        padding: 24,
+        width: '100%',
+        maxWidth: 400,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        textAlign: 'center',
+        marginBottom: 20,
+        color: '#333'
+    },
+    phoneButton: {
+        marginBottom: 12
+    },
+    cancelButton: {
+        marginTop: 8
     }
 });
 

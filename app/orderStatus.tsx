@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // import OrderDetails from '../components/OrderDetails';
-import OrderDetails from '@/components/OrderDetails';
+import MyButton from '@/components/MyButton';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { apiService } from '../api/services';
 import { CourierData, Order } from '../types/interfaces';
@@ -10,6 +10,13 @@ const OrderStatus = () => {
     const router = useRouter();
     const [orderDetails, setOrderDetails] = useState<Order | null>(null);
     const [courier, setCourier] = useState<CourierData | null>(null);
+    const [isPhoneModalVisible, setIsPhoneModalVisible] = useState(false);
+
+    // Функция для разделения номеров телефона
+    const getPhoneNumbers = (phoneString: string) => {
+        if (!phoneString) return [];
+        return phoneString.split(',').map(phone => phone.trim()).filter(phone => phone.length > 0);
+    };
 
     const fetchOrderData = async () => {
         const courierData = await apiService.getData();
@@ -30,13 +37,13 @@ const OrderStatus = () => {
     );
 
 
-    const handleStepChange = async (newStep: string) => {
+    const handleStepChange = async () => {
         if (courier?._id) {
-            const res = await apiService.updateData(courier?._id, "order.step", newStep);
+            const res = await apiService.updateData(courier?._id, "order.step", 'toClient');
             if (res.success && orderDetails) {
                 setOrderDetails({
                     ...orderDetails,
-                    step: newStep
+                    step: "toClient"
                 });
             }
         }
@@ -59,10 +66,13 @@ const OrderStatus = () => {
                 <ScrollView style={styles.scrollView}>
                     <View style={styles.summarySection}>
                         <Text style={styles.price}>
-                            {orderDetails?.sum} ₸
+                            {orderDetails?.sum} ₸ 
                         </Text>
                         <Text style={styles.description}>
                             Ваш ожидаемый заработок за доставку
+                        </Text>
+                        <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
+                            Клиент: {orderDetails?.clientTitle}
                         </Text>
                     </View>
 
@@ -90,7 +100,7 @@ const OrderStatus = () => {
                         </View>
                     </TouchableOpacity>
 
-                    <View style={styles.routeContainer}>
+                    {/* <View style={styles.routeContainer}>
                         <View style={styles.routeImageContainer}>
                             {orderDetails?.step === 'toAquaMarket' && <Image source={require("../assets/images/wayToAqua.png")} style={styles.routeImage} resizeMode='contain' />}
                             {orderDetails?.step === 'toClient' && <Image source={require("../assets/images/wayToClient.png")} style={styles.routeImage} resizeMode='contain' />}
@@ -113,13 +123,115 @@ const OrderStatus = () => {
                             </View>
                         </View>
                     </View>
-                    <View style={styles.spacer} />
+                    <View style={styles.spacer} /> */}
+                    <View style={{ marginTop: 8}}>
+                        <Text style={styles.subTitle}>Адрес: {orderDetails?.clientAddress}</Text>
+                    </View>
+                    <View style={{ marginVertical: 8}}>
+                        <MyButton
+                            title={`Номер: ${orderDetails?.clientPhone}`}
+                            onPress={() => {
+                                if (orderDetails?.clientPhone) {
+                                    const phoneNumbers = getPhoneNumbers(orderDetails?.clientPhone);
+                                    if (phoneNumbers.length === 1) {
+                                        // Если только один номер, сразу звоним
+                                        Linking.openURL(`tel:${phoneNumbers[0]}`);
+                                    } else {
+                                        // Если несколько номеров, показываем модальное окно
+                                        setIsPhoneModalVisible(true);
+                                    }
+                                }
+                            }}
+                            variant="outlined"
+                            width="full"
+                        />
+                    </View>
+                    <View>
+                        <Text style={styles.subTitle}>Комментарий: {orderDetails?.comment}</Text>
+                    </View>
+                    <View style={styles.buttonContainer}>
+                        {orderDetails?.step === 'toAquaMarket' ? (
+                            <MyButton
+                                title="Заказ у меня"
+                                onPress={handleStepChange}
+                                variant="contained"
+                                width="full"
+                            />
+                        ) : (
+                            <MyButton
+                                title="Отдать заказ"
+                                onPress={() => {
+                                    router.push({
+                                        pathname: '/changeOrderBottles' as any,
+                                        params: { 
+                                            formData: JSON.stringify({ 
+                                                orderId: orderDetails?.orderId, 
+                                                income: orderDetails?.income,
+                                                isFinish: true,
+                                                products: orderDetails?.products
+                                            }) 
+                                        }
+                                    });
+                                }}
+                                variant="contained"
+                                width="full"
+                            />
+                        )}
+                        <TouchableOpacity
+                            onPress={() => {
+                                router.push({
+                                    pathname: '/cancelledReason' as any,
+                                    params: { formData: JSON.stringify({ orderId: orderDetails?.orderId, income: orderDetails?.income }) }
+                                })
+                            }}
+                            style={styles.secondaryButton}
+                        >
+                            <Text style={styles.secondaryButtonText}>
+                                Отменить заказ
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </ScrollView>
 
-                <View style={styles.footer}>
+                {/* <View style={styles.footer}>
                     {orderDetails && <OrderDetails order={orderDetails} onStepChange={handleStepChange} />}
-                </View>
+                </View> */}
+                
             </View>
+
+            <Modal
+                visible={isPhoneModalVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setIsPhoneModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Выберите номер телефона</Text>
+                        {getPhoneNumbers(orderDetails?.clientPhone || '').map((phone, index) => (
+                            <View key={index} style={styles.phoneButton}>
+                                <MyButton
+                                    title={phone}
+                                    onPress={() => {
+                                        Linking.openURL(`tel:${phone}`);
+                                        setIsPhoneModalVisible(false);
+                                    }}
+                                    variant="outlined"
+                                    width="full"
+                                />
+                            </View>
+                        ))}
+                        <View style={styles.cancelButton}>
+                            <MyButton
+                                title="Отмена"
+                                onPress={() => setIsPhoneModalVisible(false)}
+                                variant="contained"
+                                width="full"
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -237,6 +349,124 @@ const styles = StyleSheet.create({
     },
     footer: {
         marginTop: 'auto'
+    },
+    subTitle: {
+        fontSize: 16,
+        fontWeight: '500'
+    },
+    detailsContainer: {
+        marginTop: 16
+    },
+    itemRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8
+    },
+    itemTouchable: {
+        flexDirection: 'row',
+        alignItems: 'center'
+    },
+    checkbox: {
+        width: 24,
+        height: 24,
+        borderWidth: 2,
+        borderColor: '#E3E3E3',
+        borderRadius: 6,
+        marginRight: 16,
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    itemTitle: {
+        fontSize: 18
+    },
+    itemDescription: {
+        color: '#545454'
+    },
+    helpSection: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 16,
+        marginTop: 4
+    },
+    helpLeft: {
+        flexDirection: 'row',
+        alignItems: 'center'
+    },
+    questionIcon: {
+        width: 20,
+        height: 20,
+        marginTop: 4
+    },
+    helpText: {
+        fontSize: 16,
+        marginLeft: 16
+    },
+    buttonContainer: {
+        marginTop: 24,
+        gap: 12
+    },
+    primaryButton: {
+        backgroundColor: '#DC1818',
+        borderRadius: 12,
+        paddingVertical: 16
+    },
+    disabledButton: {
+        backgroundColor: '#F9C8C8'
+    },
+    buttonText: {
+        color: 'white',
+        textAlign: 'center',
+        fontSize: 18,
+        fontWeight: '500'
+    },
+    secondaryButton: {
+        borderWidth: 1,
+        borderColor: '#DC1818',
+        borderRadius: 12,
+        paddingVertical: 16,
+        marginTop: 12
+    },
+    secondaryButtonText: {
+        color: '#DC1818',
+        textAlign: 'center',
+        fontSize: 18,
+        fontWeight: '500'
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        borderRadius: 20,
+        padding: 24,
+        width: '100%',
+        maxWidth: 400,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        textAlign: 'center',
+        marginBottom: 20,
+        color: '#333'
+    },
+    phoneButton: {
+        marginBottom: 12
+    },
+    cancelButton: {
+        marginTop: 8
     }
 });
 

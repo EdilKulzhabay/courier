@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 // Создаем экземпляр axios с базовой конфигурацией
 const api = axios.create({
-  // baseURL: 'http://192.168.10.3:4444', // Замените на ваш базовый URL API
-  baseURL: 'https://api.tibetskayacrm.kz', // Замените на ваш базовый URL API
+  baseURL: 'http://192.168.10.5:4444', // Замените на ваш базовый URL API
+  // baseURL: 'https://api.tibetskayacrm.kz', // Замените на ваш базовый URL API
   timeout: 30000, // Таймаут запроса в миллисекундах
   headers: {
     'Content-Type': 'application/json',

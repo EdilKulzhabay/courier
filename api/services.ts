@@ -127,5 +127,14 @@ export const apiService = {
         } catch (error) {
             throw error;
         }
+    },
+
+    needToGiveTheOrderToCourier: async (fullName: string) => {
+        try {
+            const response = await api.post('/needToGiveTheOrderToCourier', {fullName});
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
     }
 };

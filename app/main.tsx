@@ -6,7 +6,7 @@ import { apiService } from "../api/services";
 import MyButton from "../components/MyButton";
 import MySwitchToggle from "../components/MySwitchToggle";
 import { CourierData, Order } from "../types/interfaces";
-import { removeCourierData, removeNotificationTokenData, removeTokenData, updateCourierData } from "../utils/storage";
+import { updateCourierData } from "../utils/storage";
 
 declare global {
     var isOnline: boolean | undefined;
@@ -35,7 +35,7 @@ const Main = () => {
             } else {
                 setOrder(null)
             }
-        }
+        } 
     };
 
     const getIncome = useCallback(async () => {
@@ -49,37 +49,6 @@ const Main = () => {
         }
     }, []);
 
-    const handleBackPress = useCallback(() => {
-        Alert.alert(
-            "Выход",
-            "Вы действительно хотите выйти из аккаунта?",
-            [
-                {
-                    text: "Отмена",
-                    style: "cancel"
-                },
-                {
-                    text: "Выйти",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            if (courier?._id) {
-                                await apiService.updateData(courier._id, "onTheLine", false);
-                            }
-                            await removeTokenData();
-                            await removeCourierData();
-                            await removeNotificationTokenData();
-                            router.replace("./start");
-                        } catch (error) {
-                            console.error('Ошибка при выходе:', error);
-                        }
-                    }
-                }
-            ]
-        );
-        return true; // Предотвращаем стандартное поведение
-    }, [courier, router]);
-
     useFocusEffect(
         useCallback(() => {
             fetchCourierData();
@@ -87,15 +56,16 @@ const Main = () => {
         }, [getIncome])
     );
 
-    // Отдельный useEffect для обработчика кнопки "Назад"
     useFocusEffect(
         useCallback(() => {
-            const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
-            
+            const onBackPress = () => true;
+
+            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
             return () => {
-                backHandler.remove();
+                subscription.remove();
             };
-        }, [handleBackPress])
+        }, [])
     );
 
     // Функция для получения и отправки текущего местоположения
@@ -158,6 +128,28 @@ const Main = () => {
             }
         } else {
             alert("Вы не можете изменить статус, пока не выполните существующий заказ")
+        }
+    }
+
+    const getOrder = async () => {
+        setLoading(true);
+        const courierData = await apiService.getData();
+        if (courierData.success && courierData.userData?.order?.orderId && courierData.userData?.order) {
+            setOrder(courierData.userData.order);
+            setCourier(courierData.userData);
+            setCapacity12(courierData.userData.capacity12 || 0);
+            setCapacity19(courierData.userData.capacity19 || 0);
+            setLoading(false);
+            return;
+        } 
+        if (courier?.fullName) {
+            const orderData = await apiService.needToGiveTheOrderToCourier(courier?.fullName);
+            if (orderData.success) {
+                setLoading(false);
+            } else {
+                Alert.alert("Ошибка", orderData.message);
+                setLoading(false);
+            }
         }
     }
 
@@ -224,71 +216,23 @@ const Main = () => {
                         <View style={styles.capacityRow}>
                             <View style={styles.capacityItem}>
                                 <Text style={styles.capacityLabel}>12,5л: {capacity12}</Text>
-                                {/* <TextInput
-                                    style={styles.capacityInput}
-                                    keyboardType="numeric"
-                                    value={String(capacity12)}
-                                    onChangeText={(text) => {
-                                        const value = parseInt(text) || 0;
-                                        setCapacity12(value);
-                                    }}
-                                /> */}
                             </View>
                             <View style={styles.capacityItem}>
                                 <Text style={styles.capacityLabel}>19,8л: {capacity19}</Text>
-                                {/* <TextInput
-                                    style={styles.capacityInput}
-                                    keyboardType="numeric" 
-                                    value={String(capacity19)}
-                                    onChangeText={async (text) => {
-                                        const value = parseInt(text) || 0;
-                                        setCapacity19(value);
-                                    }}
-                                /> */}
                             </View>
                         </View>
-                        {/* <View style={styles.capacityButtonContainer}>
-                            <MyButton
-                                title="Сохранить"
-                                onPress={async () => {
-                                    if (courier && courier?._id && (capacity12 !== courier?.capacity12 || capacity19 !== courier?.capacity19)) {
-                                        try {
-                                            setLoading(true);
-                                            const res = await apiService.updateData(courier._id, "capacities", {
-                                                capacity12: capacity12,
-                                                capacity19: capacity19
-                                            });
-                                            if (res.success) {
-                                                setCourier({...courier, capacity12: capacity12, capacity19: capacity19});
-                                            }
-                                            setLoading(false);
-                                        } catch (error) {
-                                            console.error('Ошибка при обновлении:', error);
-                                            setLoading(false);
-                                        }
-                                    }
-                                }}
-                                variant="contained"
-                                width="full"
-                                disabled={capacity12 === courier?.capacity12 && capacity19 === courier?.capacity19}
-                                loading={loading}
-                            />
-                        </View> */}
                     </View>
                 </View>
 
                 <View style={styles.orderSection}>
                     {courier?.status === "active" && courier?.onTheLine && <View style={styles.centerContent}>
                         {order === null ? <>
-                            <Image
-                                source={require("../assets/images/box.png")}
-                                style={{width: 42, height: 42}}
-                                resizeMode="contain"
-                            />  
-                            <View>
-                                <Text style={styles.noOrderTitle}>Заявок пока нет</Text>
-                                <Text style={styles.noOrderSubtitle}>Тут будут доступны входящие заявки</Text>
-                            </View>
+                            <MyButton
+                                title="Получить заказ"
+                                onPress={getOrder}
+                                variant="contained"
+                                loading={loading}
+                            />
                         </>
                         : 
                         <TouchableOpacity style={styles.fullWidth} onPress={() => {router.push("./orderStatus")}}>

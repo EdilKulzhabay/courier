@@ -392,7 +392,7 @@ export default function RootLayout() {
     return (
         <SafeAreaView style={{flex: 1}}>
             <SafeAreaProvider>
-                <Stack screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
+                <Stack screenOptions={{ headerShown: false, gestureEnabled: false }} initialRouteName={initialRoute}>
                     <Stack.Screen name="start" />
                     <Stack.Screen name="login" />
                     <Stack.Screen name="register" />
