@@ -74,6 +74,16 @@ const OrderStatus = () => {
                         <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
                             Клиент: {orderDetails?.clientTitle}
                         </Text>
+                        <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
+                            Количество бутылей:
+                        </Text>
+                        {orderDetails?.products?.b12 && orderDetails?.products?.b12 > 0 && <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
+                            12,5л: {orderDetails?.products?.b12} бутылей
+                        </Text>}
+                        {orderDetails?.products?.b19 && orderDetails?.products?.b19 > 0 && <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
+                            19,8л: {orderDetails?.products?.b19} бутылей
+                        </Text>}
+                        
                     </View>
 
                     <TouchableOpacity
