@@ -83,7 +83,9 @@ const OrderStatus = () => {
                         {orderDetails?.products?.b19 && orderDetails?.products?.b19 > 0 && <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
                             19,8л: {orderDetails?.products?.b19} бутылей
                         </Text>}
-                        
+                        <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
+                            Форма оплаты: {orderDetails?.opForm === "fakt" ? "Нал/Карта/QR" : orderDetails?.opForm === "credit" ? "В долг" : orderDetails?.opForm === "coupon" ? "Талоны" : orderDetails?.opForm === "postpay" ? "Постоплата" : orderDetails?.opForm === "mixed" ? "Смешанная" : ""}
+                        </Text>
                     </View>
 
                     <TouchableOpacity
