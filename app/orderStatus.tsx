@@ -18,12 +18,31 @@ const OrderStatus = () => {
         return phoneString.split(',').map(phone => phone.trim()).filter(phone => phone.length > 0);
     };
 
+    // Функция для нормализации номера телефона для WhatsApp
+    const normalizePhoneForWhatsApp = (phone: string): string => {
+        // Убираем все пробелы, дефисы, скобки и другие символы форматирования
+        let normalized = phone.replace(/[\s\-\(\)]/g, '');
+        
+        // Если начинается с +7, убираем +
+        if (normalized.startsWith('+7')) {
+            normalized = normalized.substring(1);
+        }
+        // Если начинается с 8, заменяем на 7
+        else if (normalized.startsWith('8')) {
+            normalized = '7' + normalized.substring(1);
+        }
+        // Если начинается с 7, оставляем как есть
+        
+        return normalized;
+    };
+
     const fetchOrderData = async () => {
         const courierData = await apiService.getData();
         if (courierData.success) {
             setCourier(courierData.userData);
             if (courierData.userData.order.orderId) {
                 setOrderDetails(courierData.userData.order)
+                console.log("orderDetails = ", courierData.userData.order);
             } else {
                 setOrderDetails(null)
             }
@@ -49,6 +68,26 @@ const OrderStatus = () => {
         }
     };
 
+    if (!orderDetails) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <Image
+                            source={require("../assets/images/arrowBack.png")}
+                            style={styles.backIcon}
+                            resizeMode="contain"
+                        />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Статус заказа</Text>
+                </View>
+                <View style={styles.content}>
+                    <Text style={{textAlign: 'center', marginTop: 20}}>Загрузка данных...</Text>
+                </View>
+            </View>
+        );
+    }
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -66,23 +105,23 @@ const OrderStatus = () => {
                 <ScrollView style={styles.scrollView}>
                     <View style={styles.summarySection}>
                         <Text style={styles.price}>
-                            {orderDetails?.sum} ₸ 
+                            {orderDetails?.sum ?? 0} ₸ 
                         </Text>
                         <Text style={styles.description}>
                             Ваш ожидаемый заработок за доставку
                         </Text>
                         <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
-                            Клиент: {orderDetails?.clientTitle}
+                            Клиент: {orderDetails?.clientTitle ?? ''}
                         </Text>
                         <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
                             Количество бутылей:
                         </Text>
-                        {orderDetails?.products?.b12 && orderDetails?.products?.b12 > 0 && <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
-                            12,5л: {orderDetails?.products?.b12} бутылей
-                        </Text>}
-                        {orderDetails?.products?.b19 && orderDetails?.products?.b19 > 0 && <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
-                            19,8л: {orderDetails?.products?.b19} бутылей
-                        </Text>}
+                        <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
+                            12,5л: {orderDetails?.products?.b12 ?? 0} бутылей
+                        </Text>
+                        <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
+                            19,8л: {orderDetails?.products?.b19 ?? 0} бутылей
+                        </Text>
                         <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
                             Форма оплаты: {orderDetails?.opForm === "fakt" ? "Нал/Карта/QR" : orderDetails?.opForm === "credit" ? "В долг" : orderDetails?.opForm === "coupon" ? "Талоны" : orderDetails?.opForm === "postpay" ? "Постоплата" : orderDetails?.opForm === "mixed" ? "Смешанная" : ""}
                         </Text>
@@ -137,21 +176,14 @@ const OrderStatus = () => {
                     </View>
                     <View style={styles.spacer} /> */}
                     <View style={{ marginTop: 8}}>
-                        <Text style={styles.subTitle}>Адрес: {orderDetails?.clientAddress}</Text>
+                        <Text style={styles.subTitle}>Адрес: {orderDetails?.clientAddress ?? ''}</Text>
                     </View>
                     <View style={{ marginVertical: 8}}>
                         <MyButton
-                            title={`Номер: ${orderDetails?.clientPhone}`}
+                            title={`Номер: ${orderDetails?.clientPhone ?? ''}`}
                             onPress={() => {
                                 if (orderDetails?.clientPhone) {
-                                    const phoneNumbers = getPhoneNumbers(orderDetails?.clientPhone);
-                                    if (phoneNumbers.length === 1) {
-                                        // Если только один номер, сразу звоним
-                                        Linking.openURL(`tel:${phoneNumbers[0]}`);
-                                    } else {
-                                        // Если несколько номеров, показываем модальное окно
-                                        setIsPhoneModalVisible(true);
-                                    }
+                                    setIsPhoneModalVisible(true);
                                 }
                             }}
                             variant="outlined"
@@ -159,7 +191,7 @@ const OrderStatus = () => {
                         />
                     </View>
                     <View>
-                        <Text style={styles.subTitle}>Комментарий: {orderDetails?.comment}</Text>
+                        <Text style={styles.subTitle}>Комментарий: {orderDetails?.comment ?? ''}</Text>
                     </View>
                     <View style={styles.buttonContainer}>
                         {orderDetails?.step === 'toAquaMarket' ? (
@@ -219,25 +251,42 @@ const OrderStatus = () => {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Выберите номер телефона</Text>
+                        <Text style={styles.modalTitle}>Выберите способ связи</Text>
                         {getPhoneNumbers(orderDetails?.clientPhone || '').map((phone, index) => (
-                            <View key={index} style={styles.phoneButton}>
-                                <MyButton
-                                    title={phone}
-                                    onPress={() => {
-                                        Linking.openURL(`tel:${phone}`);
-                                        setIsPhoneModalVisible(false);
-                                    }}
-                                    variant="outlined"
-                                    width="full"
-                                />
+                            <View key={index} style={styles.phoneNumberContainer}>
+                                <Text style={styles.phoneNumberLabel}>{phone}</Text>
+                                <View style={styles.phoneActionsRow}>
+                                    <View style={styles.phoneActionButton}>
+                                        <MyButton
+                                            title="Позвонить"
+                                            onPress={() => {
+                                                Linking.openURL(`tel:${phone}`);
+                                                setIsPhoneModalVisible(false);
+                                            }}
+                                            variant="outlined"
+                                            width="full"
+                                        />
+                                    </View>
+                                    <View style={styles.phoneActionButton}>
+                                        <MyButton
+                                            title="WhatsApp"
+                                            onPress={() => {
+                                                const normalizedPhone = normalizePhoneForWhatsApp(phone);
+                                                Linking.openURL(`https://wa.me/${normalizedPhone}`);
+                                                setIsPhoneModalVisible(false);
+                                            }}
+                                            variant="contained"
+                                            width="full"
+                                        />
+                                    </View>
+                                </View>
                             </View>
                         ))}
                         <View style={styles.cancelButton}>
                             <MyButton
                                 title="Отмена"
                                 onPress={() => setIsPhoneModalVisible(false)}
-                                variant="contained"
+                                variant="outlined"
                                 width="full"
                             />
                         </View>
@@ -476,6 +525,22 @@ const styles = StyleSheet.create({
     },
     phoneButton: {
         marginBottom: 12
+    },
+    phoneNumberContainer: {
+        marginBottom: 20
+    },
+    phoneNumberLabel: {
+        fontSize: 16,
+        fontWeight: '500',
+        marginBottom: 12,
+        textAlign: 'center',
+        color: '#333'
+    },
+    phoneActionsRow: {
+        flexDirection: 'row',
+        gap: 12
+    },
+    phoneActionButton: {
     },
     cancelButton: {
         marginTop: 8

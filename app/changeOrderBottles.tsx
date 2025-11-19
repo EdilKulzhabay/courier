@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { useEffect, useState } from "react"
-import { Alert, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import { Alert, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native"
 import { apiService } from "../api/services"
 import MyButton from "../components/MyButton"
 import { CourierData, Order } from "../types/interfaces"
@@ -24,6 +24,9 @@ const ChangeOrderBottles = () => {
     const [bottleCount12, setBottleCount12] = useState(0);
     const [bottleCount19, setBottleCount19] = useState(0);
     const [completeOrderLoading, setCompleteOrderLoading] = useState(false);
+    const [emptyBottleCount12, setEmptyBottleCount12] = useState(0);
+    const [emptyBottleCount19, setEmptyBottleCount19] = useState(0);
+    const [isModalVisible, setIsModalVisible] = useState(false);
 
     const fetchCourierData = async () => {
         const courierData = await apiService.getData();
@@ -77,7 +80,7 @@ const ChangeOrderBottles = () => {
         setCompleteOrderLoading(true);
         const courier = await getCourierData();
         if (courier && orderId) {
-            const res = await apiService.completeOrder(orderId, courier._id, bottleCount12, bottleCount19);
+            const res = await apiService.completeOrder(orderId, courier._id, bottleCount12, bottleCount19, emptyBottleCount12, emptyBottleCount19);
             if (res.success) {
                 const income = res.income;
                 router.push({
@@ -101,7 +104,7 @@ const ChangeOrderBottles = () => {
             <Text style={styles.headerTitle}>Изменить количество бутылей</Text>
         </View>
 
-        <View style={styles.content}>
+        <ScrollView style={styles.content}>
             <View style={styles.bottleCounter}>
                 <Text style={styles.counterTitle}>Количество бутылей 12.5</Text>
                 <View style={styles.counterControls}>
@@ -150,6 +153,16 @@ const ChangeOrderBottles = () => {
                 </View>
             </View>
 
+            {emptyBottleCount12 > 0 || emptyBottleCount19 > 0 && (
+                <View style={styles.emptyBottleCounter}>
+                    <Text style={styles.emptyBottleCounterTitle}>Количество пустых бутылей</Text>
+                    <View style={styles.emptyBottleCounterControls}>
+                        <Text style={styles.emptyBottleCounterValue}> 12л: {emptyBottleCount12}</Text>
+                        <Text style={styles.emptyBottleCounterValue}> 19л: {emptyBottleCount19}</Text>
+                    </View>
+                </View>
+            )}
+
             {!isFinish ? (
                 <TouchableOpacity 
                     style={styles.saveButton} 
@@ -165,7 +178,13 @@ const ChangeOrderBottles = () => {
                     <View style={styles.confirmButton}>
                         <MyButton
                             title="Подтвердить"
-                            onPress={completeOrder}
+                            onPress={() => {
+                                if (emptyBottleCount12 > 0 || emptyBottleCount19 > 0) {
+                                    completeOrder();
+                                } else {
+                                    setIsModalVisible(true);
+                                }
+                            }}
                             variant="contained"
                             width="full"
                             loading={completeOrderLoading}
@@ -173,7 +192,105 @@ const ChangeOrderBottles = () => {
                     </View>
                 </View>
             )}
+        </ScrollView>
+        <Modal
+            visible={isModalVisible}
+            onRequestClose={() => setIsModalVisible(false)}
+        >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+            <Text style={{ fontSize: 18, fontWeight: '500', marginBottom: 16 }}>
+                Введите количество пустых 12л бутылей
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+                <TouchableOpacity
+                    style={[
+                        styles.counterButton,
+                        emptyBottleCount12 === 0 && styles.counterButtonDisabled
+                    ]}
+                    onPress={() => {
+                        if (emptyBottleCount12 > 0) setEmptyBottleCount12(prev => prev - 1);
+                    }}
+                    disabled={emptyBottleCount12 === 0}
+                >
+                    <Text style={styles.counterButtonText}>-</Text>
+                </TouchableOpacity>
+                <TextInput
+                    style={{
+                        borderWidth: 1,
+                        borderColor: '#ccc',
+                        borderRadius: 6,
+                        padding: 8,
+                        marginHorizontal: 12,
+                        minWidth: 48,
+                        textAlign: 'center',
+                        fontSize: 18
+                    }}
+                    value={emptyBottleCount12.toString()}
+                    keyboardType="numeric"
+                    onChangeText={text => {
+                        let num = parseInt(text);
+                        if (isNaN(num) || num < 0) num = 0;
+                        setEmptyBottleCount12(num);
+                    }}
+                />
+                <TouchableOpacity
+                    style={styles.counterButton}
+                    onPress={() => setEmptyBottleCount12(prev => prev + 1)}
+                >
+                    <Text style={styles.counterButtonText}>+</Text>
+                </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 18, fontWeight: '500', marginBottom: 16 }}>
+                Введите количество пустых 19л бутылей
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32 }}>
+                <TouchableOpacity
+                    style={[
+                        styles.counterButton,
+                        emptyBottleCount19 === 0 && styles.counterButtonDisabled
+                    ]}
+                    onPress={() => {
+                        if (emptyBottleCount19 > 0) setEmptyBottleCount19(prev => prev - 1);
+                    }}
+                    disabled={emptyBottleCount19 === 0}
+                >
+                    <Text style={styles.counterButtonText}>-</Text>
+                </TouchableOpacity>
+                <TextInput
+                    style={{
+                        borderWidth: 1,
+                        borderColor: '#ccc',
+                        borderRadius: 6,
+                        padding: 8,
+                        marginHorizontal: 12,
+                        minWidth: 48,
+                        textAlign: 'center',
+                        fontSize: 18
+                    }}
+                    value={emptyBottleCount19.toString()}
+                    keyboardType="numeric"
+                    onChangeText={text => {
+                        let num = parseInt(text);
+                        if (isNaN(num) || num < 0) num = 0;
+                        setEmptyBottleCount19(num);
+                    }}
+                />
+                <TouchableOpacity
+                    style={styles.counterButton}
+                    onPress={() => setEmptyBottleCount19(prev => prev + 1)}
+                >
+                    <Text style={styles.counterButtonText}>+</Text>
+                </TouchableOpacity>
+            </View>
+            <MyButton 
+                title="Сохранить" 
+                onPress={() => setIsModalVisible(false)}
+                width="full"
+                variant="contained"
+            />
         </View>
+        </Modal>
     </View>
 }
 
@@ -213,7 +330,8 @@ const styles = StyleSheet.create({
         color: '#292D32'
     },
     content: {
-        paddingHorizontal: 24
+        paddingHorizontal: 24,
+        paddingBottom: 56
     },
     bottleCounter: {
         backgroundColor: 'white',
@@ -284,6 +402,29 @@ const styles = StyleSheet.create({
     },
     confirmButton: {
         marginTop: 8
+    },
+    emptyBottleCounter: {
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 24,
+        marginTop: 16
+    },
+    emptyBottleCounterTitle: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#292D32',
+        marginBottom: 16
+    },
+    emptyBottleCounterControls: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 24
+    },
+    emptyBottleCounterValue: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#292D32'
     }
 });
 

@@ -75,9 +75,9 @@ export const apiService = {
         }
     },
 
-    completeOrder: async (orderId: string, courierId: string, b12: number, b19: number) => {
+    completeOrder: async (orderId: string, courierId: string, b12: number, b19: number, emptyb12: number, emptyb19: number) => {
         try {
-            const response = await api.post(`/completeOrderCourierAggregator`, {orderId, courierId, b12, b19});
+            const response = await api.post(`/completeOrderCourierAggregator`, {orderId, courierId, b12, b19, emptyb12, emptyb19});
             return response.data;
         } catch (error) {
             throw error;

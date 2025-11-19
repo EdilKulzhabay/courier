@@ -20,6 +20,7 @@ const Main = () => {
     const [capacity19, setCapacity19] = useState<number>(0);
     const [loading, setLoading] = useState(false);
     const [income, setIncome] = useState<number>(0);
+    const [lastButtonPressTime, setLastButtonPressTime] = useState<number>(0);
 
     const [inActiveModal, setInActiveModal] = useState(false);
 
@@ -132,6 +133,10 @@ const Main = () => {
     }
 
     const getOrder = async () => {
+        if (Date.now() - lastButtonPressTime < 20000) {
+            return;
+        }
+        setLastButtonPressTime(Date.now());
         setLoading(true);
         const courierData = await apiService.getData();
         if (courierData.success && courierData.userData?.order?.orderId && courierData.userData?.order) {

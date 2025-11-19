@@ -63,7 +63,7 @@ const StartScreen = () => {
                   variant="contained"
                   disabled={false}
                   width="full"
-                  onPress={() => router.push('/main')}
+                  onPress={() => router.push('./register')}
               />
               </View>
               <TouchableOpacity
