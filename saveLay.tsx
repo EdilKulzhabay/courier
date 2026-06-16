@@ -109,7 +109,6 @@ const sendLocationToServer = async (location: any, source: string) => {
         // Обновляем время последней отправки
         global.lastLocationTime = Date.now();
         
-        console.log(`✅ ${source}: Геолокация успешно отправлена`);
         return true;
     } catch (error) {
         console.error(`❌ ${source}: Ошибка отправки геолокации:`, error);
@@ -662,14 +661,8 @@ export default function RootLayout() {
         });
 
         return () => {
-            if (notificationListener.current) {
-                Notifications.removeNotificationSubscription(
-                notificationListener.current
-                );
-            }
-            if (responseListener.current) {
-                Notifications.removeNotificationSubscription(responseListener.current);
-            }
+            notificationListener.current?.remove();
+            responseListener.current?.remove();
         };
     }, []);
 
@@ -914,7 +907,6 @@ export default function RootLayout() {
                         isVisible={showNotification}
                         onAccept={handleAcceptOrder}
                         onDecline={handleDeclineOrder}
-                        onTimeout={handleTimeout}
                         hideNotification={hideNotification}
                         isAccepted={isOrderAccepted}
                         order={currentOrder}

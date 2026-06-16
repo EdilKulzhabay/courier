@@ -20,22 +20,26 @@ const Login = () => {
         try {
             const response = await apiService.loginCourier({ email, password });
             if (response.success) {
-                console.log("response.userData = ", response.userData);
-                console.log("1response.token = ", response.token);
-                
-                const token = await registerForPushNotificationsAsync();
-                if (token && response.userData && response.userData.notificationPushToken !== token) {
-                    await apiService.updateData(response.userData._id, "notificationPushToken", token);
-                    await saveCourierData({ ...response.userData, notificationPushToken: token });
-                } else {
-                    await saveCourierData({ ...response.userData });
+                await saveTokenData({ token: response.token });
+                await saveCourierData({ ...response.userData });
+
+                const pushToken = await registerForPushNotificationsAsync();
+                if (
+                    pushToken &&
+                    response.userData &&
+                    response.userData.notificationPushToken !== pushToken
+                ) {
+                    await apiService.updateData(
+                        response.userData._id,
+                        "notificationPushToken",
+                        pushToken,
+                    );
+                    await saveCourierData({
+                        ...response.userData,
+                        notificationPushToken: pushToken,
+                    });
                 }
 
-                console.log("2response.token = ", response.token);
-                
-                await saveTokenData({
-                    token: response.token,
-                });
                 router.replace("./main");
             } else {
                 console.log(response.error);

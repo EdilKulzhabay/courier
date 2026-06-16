@@ -24,6 +24,7 @@ const DeliveredBottles = () => {
     const [deliveredBottlesKol, setDeliveredBottlesKol] = useState(0)
     const [weekData, setWeekData] = useState<number[]>([]);
     const [isSingleDateMode, setIsSingleDateMode] = useState(false);
+    const [maxDeliveredBottles, setMaxDeliveredBottles] = useState(0);
 
     const today = new Date();
     const sevenDaysAgo = new Date();
@@ -86,6 +87,7 @@ const DeliveredBottles = () => {
 
                 const sortedDates = Object.keys(dailyData).sort();
                 const graphData = sortedDates.map(date => dailyData[date]);
+                setMaxDeliveredBottles(Math.max(...graphData))
                 setWeekData(graphData);
             }
         } catch (error) {
@@ -200,8 +202,8 @@ const DeliveredBottles = () => {
                 <View style={styles.chartContainer}>
                     {weekData.map((item: number, index: number) => {
                         const barWidth = (screenWidth - 48 - padding) / weekData.length; // Ширина каждого столбца
-                        const barHeight = (item / 15) * chartHeight; // Высота столбца пропорционально максимуму
-
+                        const barHeight = (item / (maxDeliveredBottles + 10)) * chartHeight; // Высота столбца пропорционально максимуму
+                        console.log("barHeight in deliveredBottles = ", item, maxDeliveredBottles);
                         return (
                             <View key={index}>
                                 <View

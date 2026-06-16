@@ -7,7 +7,11 @@ export const apiService = {
         try {
             const response = await api.get('/getCourierAggregatorData');
             return response.data;
-        } catch (error) {
+        } catch (error: any) {
+            const status = error?.response?.status;
+            if (status === 401 || status === 403) {
+                return { success: false, message: 'Нет доступа' };
+            }
             throw error;
         }
     },
@@ -75,9 +79,9 @@ export const apiService = {
         }
     },
 
-    completeOrder: async (orderId: string, courierId: string, b12: number, b19: number, emptyb12: number, emptyb19: number) => {
+    completeOrder: async (orderId: string, courierId: string, b12: number, b19: number, emptyb12: number, emptyb19: number, opForm?: string) => {
         try {
-            const response = await api.post(`/completeOrderCourierAggregator`, {orderId, courierId, b12, b19, emptyb12, emptyb19});
+            const response = await api.post(`/completeOrderCourierAggregator`, {orderId, courierId, b12, b19, emptyb12, emptyb19, opForm});
             return response.data;
         } catch (error) {
             throw error;
@@ -120,6 +124,37 @@ export const apiService = {
         }
     },
 
+    getCashIncome: async () => {
+        try {
+            const response = await api.get('/getCourierAggregatorCashIncome');
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    getAvailableIncome: async () => {
+        try {
+            const response = await api.get('/getCourierAggregatorAvailableIncome');
+            return response.data;
+        } catch (error: any) {
+            const message =
+                error?.response?.data?.message || 'Не удалось получить доступный баланс';
+            return { success: false, message };
+        }
+    },
+
+    getDeliveredBottlesToday: async () => {
+        try {
+            const response = await api.get('/getCourierAggregatorDeliveredBottlesToday');
+            return response.data;
+        } catch (error: any) {
+            const message =
+                error?.response?.data?.message || 'Не удалось получить количество доставленных бутылей';
+            return { success: false, message };
+        }
+    },
+
     orTools: async () => {
         try {
             const response = await api.get('/orTools');
@@ -136,5 +171,73 @@ export const apiService = {
         } catch (error) {
             throw error;
         }
-    }
+    },
+
+    createOrderKaspiQr: async (orderId: string, amount?: number, forceRefresh = false) => {
+        try {
+            const response = await api.post('/createOrderKaspiQrCourierAggregator', {
+                orderId,
+                amount,
+                forceRefresh,
+            });
+            return response.data;
+        } catch (error: any) {
+            const message =
+                error?.response?.data?.message || 'Не удалось создать Kaspi QR';
+            return { success: false, message };
+        }
+    },
+
+    checkOrderKaspiQr: async (orderId: string) => {
+        try {
+            const response = await api.post('/checkOrderKaspiQrCourierAggregator', { orderId });
+            return response.data;
+        } catch (error: any) {
+            const message =
+                error?.response?.data?.message || 'Не удалось проверить оплату';
+            return { success: false, message };
+        }
+    },
+
+    requestWithdrawal: async (amount: number) => {
+        try {
+            const response = await api.post('/requestWithdrawalCourierAggregator', { amount });
+            return response.data;
+        } catch (error: any) {
+            const message =
+                error?.response?.data?.message || 'Не удалось отправить запрос на вывод';
+            return { success: false, message };
+        }
+    },
+
+    getOrder: async (orderId: string) => {
+        try {
+            const response = await api.post('/getOrderDataForId', { id: orderId });
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    sendNotificationToClient: async (notificationToken: string, message: string) => {
+        try {
+            const response = await api.post('/sendNotificationToClient', { notificationToken, message });
+            return response.data;
+        } catch (error: any) {
+            const message =
+                error?.response?.data?.message || 'Не удалось отправить уведомление';
+            return { success: false, message };
+        }
+    },
+
+    deleteCourierAggregator: async (courierId: string) => {
+        try {
+            const response = await api.post('/deleteCourierAggregator', { courierId });
+            return response.data;
+        } catch (error: any) {
+            const message =
+                error?.response?.data?.message || 'Не удалось удалить аккаунт';
+            return { success: false, message };
+        }
+    },
 };

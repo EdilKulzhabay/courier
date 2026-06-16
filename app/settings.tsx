@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router"
 import { useEffect, useState } from "react"
-import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import { Alert, Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import { apiService } from "../api/services"
 import MyButton from "../components/MyButton"
 import MySwitchToggle from "../components/MySwitchToggle"
@@ -17,6 +17,8 @@ const Settings = () => {
     const [notification, setNotification] = useState(true);
     const [logoutLoading, setLogoutLoading] = useState(false);
     const [notificationOffLoading, setNotificationOffLoading] = useState(false);
+    const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+    const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
 
     const fetchCourierData = async () => {
         const courierData = await getCourierData();
@@ -68,152 +70,213 @@ const Settings = () => {
         }
     }
 
+    const deleteAccount = async () => {
+        setDeleteAccountLoading(true);
+        if (courier?._id) {
+            const res = await apiService.deleteCourierAggregator(courier._id);
+            if (res?.success) {
+                await removeTokenData();
+                await removeCourierData();
+                await removeNotificationTokenData();
+                router.push("./start");
+                setDeleteAccountLoading(false);
+            } else {
+                Alert.alert("Ошибка", res?.message);
+            }
+        }
+        setIsDeleteModalVisible(false);
+    }
+
     return (
         <View style={styles.container}>
 
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Image
-                        source={require("../assets/images/arrowBack.png")}
-                        style={styles.backIcon}
-                        resizeMode="contain"
-                    />
+                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <Image
+                            source={require("../assets/images/arrowBack.png")}
+                            style={styles.backIcon}
+                            resizeMode="contain"
+                        />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Настройки</Text>
+                </View>
+                <TouchableOpacity onPress={() => {
+                    setIsModalVisible(true);
+                }}>
+                    <Image source={require("../assets/images/logInOut.png")} style={{width: 30, height: 30}} resizeMode="contain" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Настройки</Text>
             </View>
 
-            <View style={styles.profileInfo}>
-                <Text style={styles.userName}>{courier?.fullName}</Text>
-            </View>
+            <ScrollView style={{paddingHorizontal: 24, flex: 1}}>
 
-            <ScrollView style={styles.menuContainer}>
-                <TouchableOpacity
-                    onPress={() => {router.push("./changeData")}}
-                    style={styles.menuItem}
-                >
-                    <View style={styles.menuItemLeft}>
-                        <Image
-                            source={require("../assets/images/edit.png")}
-                            style={styles.menuIcon}
-                            resizeMode="contain"
-                        />
-                        <Text style={styles.menuText}>Изменить данные</Text>
+                <View style={{
+                    backgroundColor: "#FEF2F2",
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: "#FFE2E2",
+                    padding: 16,
+                    flexDirection: "row",
+                    alignItems: "center",
+                }}>
+                    <View style={{width: 48, height: 48, justifyContent: "center", alignItems: "center", backgroundColor: "#FB2C36", borderRadius: "100%"}}>
+                        <Text style={{fontSize: 20, fontWeight: "600", color: "white"}}>{courier?.firstName.charAt(0).toUpperCase()}{courier?.lastName.charAt(0).toUpperCase()}</Text>
                     </View>
+                    <View style={{marginLeft: 12}}>
+                        <Text style={{color: "#101828", fontWeight: 500}}>{courier?.fullName}</Text>
+                        <Text style={{color: "#4A5565", fontWeight: 400}}>Великий курьер!</Text>
+                    </View>
+                </View>
 
-                    <Image
-                        source={require("../assets/images/arrowRight.png")}
-                        style={styles.arrowIcon}
-                        resizeMode="contain"
+                <View style={styles.menuContainer}>
+                    <Text style={{color: "#6A7282", fontWeight: 400, marginBottom: 12, textTransform: "uppercase"}}>Аккаунт</Text>
+                    <View style={{backgroundColor: "white", borderRadius: 8}}>
+                        <TouchableOpacity
+                            onPress={() => {router.push("./changeData")}}
+                            style={styles.menuItem}
+                        >
+                            <View style={styles.menuItemLeft}>
+                                <View style={styles.iconContainer}>
+                                    <Image
+                                        source={require("../assets/images/changeData.png")}
+                                        style={styles.menuIcon}
+                                        resizeMode="contain"
+                                    />
+                                </View>
+                                <Text style={styles.menuText}>Изменить данные</Text>
+                            </View>
+
+                            <Image
+                                source={require("../assets/images/arrowRight.png")}
+                                style={styles.arrowIcon}
+                                resizeMode="contain"
+                            />
+                        </TouchableOpacity>
+
+                        <View style={styles.divider}></View>
+
+                        <TouchableOpacity
+                            onPress={() => {router.push("./analytics")}}
+                            style={[styles.menuItem, styles.menuItemSpaced]}
+                        >
+                            <View style={styles.menuItemLeft}>
+                                <View style={styles.iconContainer}>
+                                    <Image
+                                        source={require("../assets/images/analytics.png")}
+                                        style={styles.menuIcon}
+                                        resizeMode="contain"
+                                    />
+                                </View>
+                                <Text style={styles.menuText}>Аналитика</Text>
+                            </View>
+
+                            <Image
+                                source={require("../assets/images/arrowRight.png")}
+                                style={styles.arrowIcon}
+                                resizeMode="contain"
+                            />
+                        </TouchableOpacity>
+                    </View>
+                    
+                    <Text style={{color: "#6A7282", fontWeight: 400, marginBottom: 12, textTransform: "uppercase", marginTop: 16}}>Приложение</Text>
+                    <View style={{backgroundColor: "white", borderRadius: 8}}>
+                        <TouchableOpacity
+                            onPress={() => {}}
+                            disabled={true}
+                            style={[styles.menuItem, styles.menuItemSpaced]}
+                        >
+                            <View style={styles.menuItemLeft}>
+                                <View style={styles.iconContainer}>
+                                    <Image
+                                        source={require("../assets/images/city.png")}
+                                        style={styles.menuIcon}
+                                        resizeMode="contain"
+                                    />
+                                </View>
+                                <Text style={styles.menuText}>Город</Text>
+                            </View>
+
+                            <View style={styles.menuItemRight}>
+                                <Text style={styles.disabledText}>Алматы</Text>
+                                <Image
+                                    source={require("../assets/images/arrowRight.png")}
+                                    style={styles.arrowIcon}
+                                    resizeMode="contain"
+                                />
+                            </View>
+                        </TouchableOpacity>
+
+                        <View style={styles.divider}></View>
+
+                        <TouchableOpacity
+                            onPress={() => {}}
+                            disabled={true}
+                            style={[styles.menuItem, styles.menuItemSpaced]}
+                        >
+                            <View style={styles.menuItemLeft}>
+                                <View style={styles.iconContainer}>
+                                    <Image
+                                        source={require("../assets/images/lang.png")}
+                                        style={styles.menuIcon}
+                                        resizeMode="contain"
+                                    />
+                                </View>
+                                <Text style={styles.menuText}>Язык</Text>
+                            </View>
+
+                            <View style={styles.menuItemRight}>
+                                <Text style={styles.disabledText}>Русский</Text>
+                                <Image
+                                    source={require("../assets/images/arrowRight.png")}
+                                    style={styles.arrowIcon}
+                                    resizeMode="contain"
+                                />
+                            </View>
+                        </TouchableOpacity>
+
+                        <View style={styles.divider}></View>
+
+                        <TouchableOpacity
+                            onPress={() => {}}
+                            style={[styles.menuItem, styles.menuItemSpaced]}
+                        >
+                            <View style={styles.menuItemLeft}>
+                                <View style={styles.iconContainer}>
+                                    <Image
+                                        source={require("../assets/images/bell.png")}
+                                        style={styles.menuIcon}
+                                        resizeMode="contain"
+                                    />
+                                </View>
+                                <Text style={styles.menuText}>Уведомления и звуки</Text>
+                            </View>
+
+                            <View style={styles.menuItemRight}>
+                                <MySwitchToggle
+                                    value={notification}
+                                    onPress={() => {
+                                        if (notification) {
+                                            setIsNotificationModalVisible(true);
+                                        } else {
+                                            notificationOn();
+                                        }
+                                    }}
+                                />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                <View style={styles.footer}>
+                    <MyButton
+                        title="Удалить аккаунт"
+                        onPress={() => {
+                            setIsDeleteModalVisible(true);
+                        }}
+                        variant="outlined"
                     />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    onPress={() => {router.push("./analytics")}}
-                    style={[styles.menuItem, styles.menuItemSpaced]}
-                >
-                    <View style={styles.menuItemLeft}>
-                        <Image
-                            source={require("../assets/images/chart.png")}
-                            style={styles.menuIcon}
-                            resizeMode="contain"
-                        />
-                        <Text style={styles.menuText}>Аналитика</Text>
-                    </View>
-
-                    <Image
-                        source={require("../assets/images/arrowRight.png")}
-                        style={styles.arrowIcon}
-                        resizeMode="contain"
-                    />
-                </TouchableOpacity>
-
-                <View style={styles.divider}></View>
-
-                <TouchableOpacity
-                    onPress={() => {}}
-                    disabled={true}
-                    style={[styles.menuItem, styles.menuItemSpaced]}
-                >
-                    <View style={styles.menuItemLeft}>
-                        <Image
-                            source={require("../assets/images/location.png")}
-                            style={styles.menuIcon}
-                            resizeMode="contain"
-                        />
-                        <Text style={styles.menuText}>Город</Text>
-                    </View>
-
-                    <View style={styles.menuItemRight}>
-                        <Text style={styles.disabledText}>Алматы</Text>
-                        <Image
-                            source={require("../assets/images/arrowRight.png")}
-                            style={styles.arrowIcon}
-                            resizeMode="contain"
-                        />
-                    </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    onPress={() => {}}
-                    disabled={true}
-                    style={[styles.menuItem, styles.menuItemSpaced]}
-                >
-                    <View style={styles.menuItemLeft}>
-                        <Image
-                            source={require("../assets/images/language.png")}
-                            style={styles.menuIcon}
-                            resizeMode="contain"
-                        />
-                        <Text style={styles.menuText}>Язык</Text>
-                    </View>
-
-                    <View style={styles.menuItemRight}>
-                        <Text style={styles.disabledText}>Русский</Text>
-                        <Image
-                            source={require("../assets/images/arrowRight.png")}
-                            style={styles.arrowIcon}
-                            resizeMode="contain"
-                        />
-                    </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    onPress={() => {}}
-                    style={[styles.menuItem, styles.menuItemSpaced]}
-                >
-                    <View style={styles.menuItemLeft}>
-                        <Image
-                            source={require("../assets/images/notification.png")}
-                            style={styles.menuIcon}
-                            resizeMode="contain"
-                        />
-                        <Text style={styles.menuText}>Уведомления и звуки</Text>
-                    </View>
-
-                    <View style={styles.menuItemRight}>
-                        <MySwitchToggle
-                            value={notification}
-                            onPress={() => {
-                                if (notification) {
-                                    setIsNotificationModalVisible(true);
-                                } else {
-                                    notificationOn();
-                                }
-                            }}
-                        />
-                    </View>
-                </TouchableOpacity>
+                </View>
             </ScrollView>
-
-            <View style={styles.footer}>
-                <MyButton
-                    title="Выйти"
-                    onPress={() => {
-                        setIsModalVisible(true);
-                    }}
-                    variant="outlined"
-                />
-            </View>
 
             <Modal 
                 visible={isModalVisible}
@@ -284,6 +347,39 @@ const Settings = () => {
                     </View>
                 </View>
             </Modal>
+
+            <Modal
+                visible={isDeleteModalVisible}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setIsDeleteModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Удалить аккаунт</Text>
+                        <Text style={styles.modalText}>Вы действительно хотите удалить аккаунт?</Text>
+                        <View style={styles.modalButtons}>
+                            <View style={styles.modalButton}>
+                                <MyButton
+                                    title="Удалить"
+                                    onPress={deleteAccount}
+                                    variant="contained"
+                                    loading={deleteAccountLoading}
+                                />
+                            </View>
+                            <View style={[styles.modalButton, styles.modalButtonRight]}>
+                                <MyButton
+                                    title="Отмена"
+                                    onPress={() => {
+                                        setIsDeleteModalVisible(false);
+                                    }}
+                                    variant="outlined"
+                                />
+                            </View>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     )
 }
@@ -304,7 +400,8 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         alignItems: 'center',
         marginBottom: 24,
-        padding: 24
+        padding: 24,
+        justifyContent: 'space-between'
     },
     backButton: {
         padding: 8,
@@ -333,14 +430,13 @@ const styles = StyleSheet.create({
         marginTop: 8
     },
     menuContainer: {
-        marginTop: 20,
-        paddingHorizontal: 40
+        marginTop: 20
     },
     menuItem: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 12
+        padding: 16
     },
     menuItemSpaced: {
         marginTop: 8
@@ -354,14 +450,15 @@ const styles = StyleSheet.create({
         height: 24
     },
     menuText: {
-        marginLeft: 16
+        marginLeft: 16,
+        color: "#101828",
+        fontWeight: 500
     },
     arrowIcon: {
         width: 24,
         height: 24
     },
     divider: {
-        marginTop: 16,
         height: 1,
         width: '100%',
         backgroundColor: '#ECECEC'
@@ -374,7 +471,6 @@ const styles = StyleSheet.create({
         color: '#ADADAD'
     },
     footer: {
-        paddingHorizontal: 24,
         paddingTop: 20,
         paddingBottom: 56
     },
@@ -413,6 +509,14 @@ const styles = StyleSheet.create({
     },
     modalButtonRight: {
         marginLeft: 12
+    },
+    iconContainer: {
+        width: 40,
+        height: 40,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#FEF2F2",
+        borderRadius: 14
     }
 });
 

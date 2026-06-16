@@ -1,0 +1,471 @@
+{
+  "address": {
+    "point": {
+      "lat": 43.225079,
+      "lon": 76.910666
+    },
+    "actual": "​Улица Тимирязева, 42, ​115 бутик; 1 этаж Аквафор  Официальный представитель в РК, 115 бутик ",
+    "link": "https://go.2gis.com/7AR5E",
+    "phone": "87016111124"
+  },
+  "products": {
+    "b12": 0,
+    "b19": 2
+  },
+  "date": {
+    "d": "2026-06-09",
+    "time": ""
+  },
+  "emptyBottles": {
+    "b12": 0,
+    "b19": 0
+  },
+  "_id": "6a2681a1e1be5be9632067b0",
+  "franchisee": {
+    "isBussinessCenter": false,
+    "_id": "66f15c557a27c92d447a16a0",
+    "userName": "admin",
+    "fullName": "admin",
+    "password": "$2b$10$IWnPM6PXUJEMqiXfdPftAuHDTZYTvVkqAUEE0q2taFR4tSomTdGny",
+    "phone": "87475315558",
+    "mail": "outofreach5569@gmail.com",
+    "role": "superAdmin",
+    "status": "active",
+    "notificationStatus": "active",
+    "notificationTypes": [],
+    "createdAt": "2024-09-23T12:17:25.835Z",
+    "updatedAt": "2025-11-22T13:31:54.706Z",
+    "__v": 1,
+    "b121kol": 9999,
+    "b191kol": 0,
+    "b197kol": 0,
+    "notificationPushTokens": []
+  },
+  "client": {
+    "cart": {
+      "b12": 0,
+      "b19": 0
+    },
+    "verify": {
+      "status": "verified",
+      "message": "success"
+    },
+    "emptyBottles": {
+      "b12": 0,
+      "b19": 0
+    },
+    "savedCard": {
+      "cardToken": null,
+      "cardId": null,
+      "cardPan": null
+    },
+    "_id": "6a1da5f4e1be5be9630f5e26",
+    "fullName": "Официальный представитель Аквафор в РК",
+    "userName": "Сакен",
+    "phone": "+7 (701) 611-11-24",
+    "mail": "",
+    "actual": "​Улица Тимирязева, 42, ​115 бутик; 1 этаж Аквафор  Официальный представитель в РК, 115 бутик ",
+    "addresses": [
+      {
+        "point": {
+          "lat": 43.225079,
+          "lon": 76.910666
+        },
+        "name": "Официальный представитель Аквафор в РК",
+        "city": "Алматы",
+        "street": "Улица Тимирязева, 42",
+        "floor": "1; 115 бутик",
+        "link": "https://go.2gis.com/7AR5E",
+        "house": "Аквафор  Официальный представитель в РК, 115 бутик",
+        "id2Gis": "9430047375048660",
+        "phone": "+7 (701) 611-11-24",
+        "lastOrderDate": null,
+        "orderPeriodicityDays": null,
+        "shouldOrderBySchedule": false,
+        "images": [],
+        "_id": "6a1da5f4e1be5be9630f5e27"
+      }
+    ],
+    "price19": 1300,
+    "price12": 900,
+    "status": "active",
+    "franchisee": "66f15c557a27c92d447a16a0",
+    "bonus": 0,
+    "balance": 0,
+    "paidBootles": 0,
+    "paidBootlesFor19": 0,
+    "paidBootlesFor12": 0,
+    "paymentMethod": "balance",
+    "subscription": false,
+    "chooseTime": false,
+    "opForm": "postpay",
+    "type": true,
+    "haveCompletedOrder": false,
+    "expoPushToken": [],
+    "clientType": false,
+    "clientBottleType": 1,
+    "clientBottleCount": 0,
+    "clientBottleCredit": 0,
+    "notificationPushToken": "",
+    "notificationPushTokens": [],
+    "lastCourierNearbyPushAt": null,
+    "isStartedHydration": false,
+    "doesItTake19Bottles": true,
+    "doesItTake12Bottles": false,
+    "platform": null,
+    "appVersion": null,
+    "showRepairMasterInApp": false,
+    "referredBy": null,
+    "firstOrderReferrerBonusPaid": false,
+    "appOrdersPlacedCount": 0,
+    "invoiceLegalData": "",
+    "supportMessages": [],
+    "createdAt": "2026-06-01T15:32:04.618Z",
+    "updatedAt": "2026-06-09T08:24:01.199Z",
+    "__v": 3
+  },
+  "status": "onTheWay",
+  "sum": 2600,
+  "courier": null,
+  "courierAggregator": {
+    "point": {
+      "lat": 43.25929578337209,
+      "lon": 76.93049468100071,
+      "timestamp": "2026-06-09T14:38:55.856Z"
+    },
+    "order": {
+      "products": {
+        "b12": 0,
+        "b19": 2
+      },
+      "date": {
+        "d": "2026-06-09",
+        "time": ""
+      },
+      "clientPoints": {
+        "lat": 43.225079,
+        "lon": 76.910666
+      },
+      "aquaMarketPoints": {
+        "lat": 43.168573,
+        "lon": 76.896437
+      },
+      "orderId": "6a2681a1e1be5be9632067b0",
+      "status": "onTheWay",
+      "sum": 2600,
+      "opForm": "postpay",
+      "comment": "",
+      "clientReview": "",
+      "clientTitle": "Официальный представитель Аквафор в РК",
+      "clientPhone": "87016111124",
+      "clientAddress": "​Улица Тимирязева, 42, ​115 бутик; 1 этаж Аквафор  Официальный представитель в РК, 115 бутик ",
+      "clientAddressLink": "https://go.2gis.com/7AR5E",
+      "aquaMarketAddress": "Баязитовой 12 1",
+      "aquaMarketAddressLink": "https://go.2gis.com/ZJw6E",
+      "step": "toClient",
+      "income": 2600
+    },
+    "soldBootles": {
+      "kol": 0
+    },
+    "franchisee": null,
+    "_id": "690ace7cc6b81eed9dab927d",
+    "fullName": "Вячеслав Ершов",
+    "email": "test@test.com",
+    "phone": "+7 (747) 380-28-02",
+    "income": 4759310,
+    "password": "$2b$10$TFYhOLetosCiVzMyUK6/M.h.SoR3kFOG/ePXT1oZ48MZLoD4zIZBK",
+    "onTheLine": true,
+    "notAccesptedKol": 0,
+    "status": "active",
+    "carNumber": "",
+    "blockTime": null,
+    "IIN": "",
+    "idCardNumber": "",
+    "balance": 0,
+    "raiting": 0,
+    "carType": "A",
+    "wholeList": false,
+    "phoneVision": false,
+    "notificationPushToken": "ExponentPushToken[BhGwW0JHUhTryvfKDJT-_d]",
+    "firstName": "test",
+    "lastName": "test",
+    "languages": [
+      "ru",
+      "en",
+      "kz"
+    ],
+    "birthDate": "2000-01-01T00:00:00.000Z",
+    "country": "kz",
+    "city": "almaty",
+    "transport": "A",
+    "inviteCode": "",
+    "termsAccepted": false,
+    "privacyAccepted": false,
+    "capacity12": 30,
+    "capacity19": 28,
+    "capacity": 0,
+    "completeFirstOrder": true,
+    "isExternal": true,
+    "orders": [
+      {
+        "products": {
+          "b12": 0,
+          "b19": 2
+        },
+        "date": {
+          "d": "2026-06-09",
+          "time": ""
+        },
+        "clientPoints": {
+          "lat": 43.225079,
+          "lon": 76.910666
+        },
+        "aquaMarketPoints": {
+          "lat": 43.168573,
+          "lon": 76.896437
+        },
+        "orderId": "6a2681a1e1be5be9632067b0",
+        "status": "onTheWay",
+        "sum": 2600,
+        "opForm": "postpay",
+        "comment": "",
+        "clientReview": "",
+        "clientTitle": "Официальный представитель Аквафор в РК",
+        "clientPhone": "87016111124",
+        "clientAddress": "​Улица Тимирязева, 42, ​115 бутик; 1 этаж Аквафор  Официальный представитель в РК, 115 бутик ",
+        "clientAddressLink": "https://go.2gis.com/7AR5E",
+        "aquaMarketAddress": "Баязитовой 12 1",
+        "aquaMarketAddressLink": "https://go.2gis.com/ZJw6E",
+        "step": "toClient",
+        "income": 2600,
+        "_id": "6a27ce2816ee978304b0a244"
+      },
+      {
+        "products": {
+          "b12": 0,
+          "b19": 5
+        },
+        "date": {
+          "d": "2026-06-09",
+          "time": ""
+        },
+        "clientPoints": {
+          "lat": 43.232947,
+          "lon": 76.954032
+        },
+        "aquaMarketPoints": {
+          "lat": 43.168573,
+          "lon": 76.896437
+        },
+        "orderId": "6a27d07716ee978304b0ad9a",
+        "status": "onTheWay",
+        "sum": 6500,
+        "opForm": "fakt",
+        "comment": "Новый клиент",
+        "clientReview": "",
+        "clientTitle": "Кафе возле ТД Life Town",
+        "clientPhone": "+7 (707) 014-21-21",
+        "clientAddress": "Бульвар Мендикулова, 98  ",
+        "clientAddressLink": "https://2gis.kz/almaty/search/мкр%20Самал-2%2C%20мендикулова%2098/firm/9429940001028247/76.954032%2C43.232947",
+        "aquaMarketAddress": "Баязитовой 12 1",
+        "aquaMarketAddressLink": "https://go.2gis.com/ZJw6E",
+        "step": "toClient",
+        "income": 6500,
+        "_id": "6a27d13c16ee978304b0b216"
+      },
+      {
+        "products": {
+          "b12": 0,
+          "b19": 5
+        },
+        "date": {
+          "d": "2026-06-09",
+          "time": ""
+        },
+        "clientPoints": {
+          "lat": 43.286284,
+          "lon": 76.990453
+        },
+        "aquaMarketPoints": {
+          "lat": 43.168573,
+          "lon": 76.896437
+        },
+        "orderId": "6a2794d9cdf9802b6a9efa33",
+        "status": "onTheWay",
+        "sum": 6500,
+        "opForm": "coupon",
+        "comment": "",
+        "clientReview": "",
+        "clientTitle": "ProVolta Club service",
+        "clientPhone": "+7 (771) 888-88-98",
+        "clientAddress": "Кульджинский тракт, 2а/4",
+        "clientAddressLink": "https://2gis.kz/almaty/geo/70000001105004855",
+        "aquaMarketAddress": "Баязитовой 12 1",
+        "aquaMarketAddressLink": "https://go.2gis.com/ZJw6E",
+        "step": "toClient",
+        "income": 6500,
+        "_id": "6a27d14116ee978304b0b39d"
+      },
+      {
+        "products": {
+          "b12": 0,
+          "b19": 6
+        },
+        "date": {
+          "d": "2026-06-09",
+          "time": ""
+        },
+        "clientPoints": {
+          "lat": 43.286118,
+          "lon": 76.905862
+        },
+        "aquaMarketPoints": {
+          "lat": 43.168573,
+          "lon": 76.896437
+        },
+        "orderId": "6a26a5a1e1be5be96321a856",
+        "status": "onTheWay",
+        "sum": 7800,
+        "opForm": "coupon",
+        "comment": "",
+        "clientReview": "",
+        "clientTitle": "Компания АзияЭнергоАвтоматика",
+        "clientPhone": "+7 (701) 770-52-32",
+        "clientAddress": "​Улица Бокейханова, 53а, этаж 2 (возле двери будет написано касса), офис на право до конца",
+        "clientAddressLink": "https://go.2gis.com/MRlDo",
+        "aquaMarketAddress": "Баязитовой 12 1",
+        "aquaMarketAddressLink": "https://go.2gis.com/ZJw6E",
+        "step": "toClient",
+        "income": 7800,
+        "_id": "6a27d2ca16ee978304b0c73e"
+      },
+      {
+        "products": {
+          "b12": 0,
+          "b19": 2
+        },
+        "date": {
+          "d": "2026-06-09",
+          "time": ""
+        },
+        "clientPoints": {
+          "lat": 43.248903,
+          "lon": 76.861657
+        },
+        "aquaMarketPoints": {
+          "lat": 43.168573,
+          "lon": 76.896437
+        },
+        "orderId": "6a26d3c6e1be5be963229a48",
+        "status": "onTheWay",
+        "sum": 2600,
+        "opForm": "coupon",
+        "comment": "",
+        "clientReview": "",
+        "clientTitle": "Сеть школ английского языка Just Speak It",
+        "clientPhone": "‪+7 (747) 132-17-04‬",
+        "clientAddress": "Микрорайон Тастак-1, 3, этаж 1",
+        "clientAddressLink": "https://go.2gis.com/ZgG9k",
+        "aquaMarketAddress": "Баязитовой 12 1",
+        "aquaMarketAddressLink": "https://go.2gis.com/ZJw6E",
+        "step": "toClient",
+        "income": 2600,
+        "_id": "6a27d33616ee978304b0c9ea"
+      },
+      {
+        "products": {
+          "b12": 30,
+          "b19": 0
+        },
+        "date": {
+          "d": "2026-06-09",
+          "time": ""
+        },
+        "clientPoints": {
+          "lat": 43.238453,
+          "lon": 76.845088
+        },
+        "aquaMarketPoints": {
+          "lat": 43.168573,
+          "lon": 76.896437
+        },
+        "orderId": "6a27905b731a9f59bdd6a511",
+        "status": "onTheWay",
+        "sum": 27000,
+        "opForm": "coupon",
+        "comment": "",
+        "clientReview": "",
+        "clientTitle": "ТОО Apple City Corps",
+        "clientPhone": "+77057278963",
+        "clientAddress": "​Улица Кабдолова, 1/7  ",
+        "clientAddressLink": "https://go.2gis.com/iay8i",
+        "aquaMarketAddress": "Баязитовой 12 1",
+        "aquaMarketAddressLink": "https://go.2gis.com/ZJw6E",
+        "step": "toClient",
+        "income": 27000,
+        "_id": "6a27d33f16ee978304b0ced2"
+      },
+      {
+        "products": {
+          "b12": 0,
+          "b19": 5
+        },
+        "date": {
+          "d": "2026-06-09",
+          "time": ""
+        },
+        "clientPoints": {
+          "lat": 43.220255,
+          "lon": 76.866776
+        },
+        "aquaMarketPoints": {
+          "lat": 43.168573,
+          "lon": 76.896437
+        },
+        "orderId": "6a27a1b0cdf9802b6a9f15a2",
+        "status": "onTheWay",
+        "sum": 6500,
+        "opForm": "coupon",
+        "comment": "",
+        "clientReview": "",
+        "clientTitle": "D-fitness (7ки!)",
+        "clientPhone": "+7 (707) 262-62-71",
+        "clientAddress": "12-й микрорайон, 20а, этаж 1 (Комната для хранения воды)",
+        "clientAddressLink": "https://2gis.kz/almaty/geo/9429940001396013",
+        "aquaMarketAddress": "Баязитовой 12 1",
+        "aquaMarketAddressLink": "https://go.2gis.com/ZJw6E",
+        "step": "toClient",
+        "income": 6500,
+        "_id": "6a27d34b16ee978304b0d0e8"
+      }
+    ],
+    "createdAt": "2025-11-05T04:11:40.653Z",
+    "updatedAt": "2026-06-09T09:38:57.472Z",
+    "__v": 17,
+    "price19": 500,
+    "price12": 300
+  },
+  "history": [],
+  "transferred": false,
+  "transferredFranchise": "",
+  "opForm": "postpay",
+  "comment": "",
+  "clientReview": 0,
+  "clientNotes": [],
+  "income": 2600,
+  "aquaMarketAddress": "",
+  "reason": "",
+  "forAggregator": false,
+  "priority": 3,
+  "isUrgent": false,
+  "clientPhone": "87016111124",
+  "needCall": false,
+  "paymentMethod": "fakt",
+  "wereCreated": "crm",
+  "notificationToken": "",
+  "deliveredTime": null,
+  "createdAt": "2026-06-08T08:47:29.378Z",
+  "updatedAt": "2026-06-09T09:33:10.190Z",
+  "__v": 0
+}

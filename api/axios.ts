@@ -40,17 +40,18 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Здесь можно обработать ошибки
     if (error.response) {
-      // Сервер вернул ошибку
-      console.error('Ошибка ответа:', {
-        url: error.config.url,
-        method: error.config.method,
-        data: error.config.data,
-        params: error.config.params,
-        status: error.response.status,
-        error: error.response.data
-      });
+      const status = error.response.status;
+      if (status !== 401 && status !== 403) {
+        console.error('Ошибка ответа:', {
+          url: error.config?.url,
+          method: error.config?.method,
+          data: error.config?.data,
+          params: error.config?.params,
+          status,
+          error: error.response.data,
+        });
+      }
     } else if (error.request) {
       // Запрос был сделан, но ответ не получен
       console.error('Ошибка запроса:', {

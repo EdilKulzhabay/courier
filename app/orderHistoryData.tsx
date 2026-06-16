@@ -3,8 +3,37 @@ import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react
 
 const OrderHistoryData = () => {
     const router = useRouter()
-    const { formData } = useLocalSearchParams();
-    const order = JSON.parse(formData as string);
+    const params = useLocalSearchParams();
+    const rawOrder = (params.formData ?? params.order) as string | undefined;
+
+    let order: any = null;
+    if (rawOrder) {
+        try {
+            order = JSON.parse(rawOrder);
+        } catch {
+            order = null;
+        }
+    }
+
+    if (!order) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <Image
+                            source={require("../assets/images/arrowBack.png")}
+                            style={styles.icon}
+                            resizeMode="contain"
+                        />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Заказ</Text>
+                </View>
+                <View style={styles.contentContainer}>
+                    <Text style={styles.addressText}>Не удалось загрузить данные заказа</Text>
+                </View>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -26,7 +55,11 @@ const OrderHistoryData = () => {
                 />
                 <View style={styles.receiptContent}>
                     <View style={styles.receiptHeader}>
-                        <Text style={styles.totalAmount}>{order.income} ₸ </Text>
+                        <Text style={styles.totalAmount}>
+                            {order.products.b12 > 0 && `12.5л: ${order.products.b12} шт`}
+                            {(order.products.b12 > 0 && order.products.b19 > 0) && "\n"}
+                            {order.products.b19 > 0 && `18.9л: ${order.products.b19} шт`}
+                        </Text>
                         <Text style={styles.dateText}>{order.date.d}</Text>
                     </View>
 
@@ -123,7 +156,7 @@ const styles = StyleSheet.create({
         borderBottomColor: "#E3E3E3"
     },
     totalAmount: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: "600"
     },
     dateText: {

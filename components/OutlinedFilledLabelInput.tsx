@@ -20,14 +20,33 @@ interface Props extends TextInputProps {
     isPassword?: boolean
 }
 
-const formatKzPhone = (text: string) => {
-    const digits = text.replace(/\D/g, "").slice(0, 11);
+const extractPhoneDigits = (text: string) => text.replace(/\D/g, "").slice(0, 11);
+
+const formatKzPhone = (digits: string) => {
+    if (digits.length === 0) return "";
     let result = "+7";
     if (digits.length > 1) result += ` (${digits.slice(1, 4)}`;
     if (digits.length >= 4) result += `) ${digits.slice(4, 7)}`;
     if (digits.length >= 7) result += `-${digits.slice(7, 9)}`;
     if (digits.length >= 9) result += `-${digits.slice(9, 11)}`;
     return result;
+};
+
+const applyPhoneMask = (text: string, previousValue: string) => {
+    const prevDigits = extractPhoneDigits(previousValue);
+    let newDigits = extractPhoneDigits(text);
+
+    // При удалении символа маски (пробел, скобка, дефис) цифры не меняются —
+    // удаляем последнюю цифру, чтобы backspace работал ожидаемо.
+    if (
+        text.length < previousValue.length &&
+        newDigits.length === prevDigits.length &&
+        prevDigits.length > 0
+    ) {
+        newDigits = prevDigits.slice(0, -1);
+    }
+
+    return formatKzPhone(newDigits);
 };
 
 const OutlinedFilledLabelInput: React.FC<Props> = ({
@@ -91,8 +110,7 @@ const OutlinedFilledLabelInput: React.FC<Props> = ({
                             secureTextEntry={isPassword && isSecure}
                             onChangeText={(text) => {
                             if (mask === "phone") {
-                                const formatted = formatKzPhone(text);
-                                onChangeText(formatted);
+                                onChangeText(applyPhoneMask(text, value));
                             } else {
                                 onChangeText(text);
                             }

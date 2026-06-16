@@ -201,7 +201,11 @@ const History = () => {
                                 <View key={order._id} style={styles.orderCard}>
                                     <View style={styles.orderHeader}>
                                         <View style={styles.rowCenter}>
-                                            <Text style={styles.priceText}>{order.income} ₸</Text>
+                                            <Text style={styles.priceText}>
+                                            {order.products.b12 > 0 && `12.5л: ${order.products.b12} шт`}
+                                            {(order.products.b12 > 0 && order.products.b19 > 0) && ", "}
+                                            {order.products.b19 > 0 && `18.9л: ${order.products.b19} шт`}
+                                            </Text>
                                         </View>
                                         <Text style={styles.detailsButton} onPress={() => {
                                             router.push({
@@ -333,7 +337,7 @@ const styles = StyleSheet.create({
         borderBottomColor: "#f0f0f0"
     },
     priceText: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: "500"
     },
     detailsButton: {

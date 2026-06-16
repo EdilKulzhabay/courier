@@ -2,11 +2,11 @@ import { apiService } from '@/api/services';
 import OrderNotification from '@/components/OrderNotification';
 import { CourierData, Order } from '@/types/interfaces';
 import { registerForPushNotificationsAsync } from '@/utils/registerForPushNotificationsAsync';
-import { saveNotificationTokenData, updateCourierData } from '@/utils/storage';
+import { isRemotePushSupported, loadNotifications } from '@/utils/notifications';
+import { getCourierData, getTokenData, saveNotificationTokenData, updateCourierData } from '@/utils/storage';
 import { useKeepAwake } from 'expo-keep-awake';
 import * as Location from 'expo-location';
-import * as Notifications from "expo-notifications";
-import { Stack } from "expo-router";
+import { Stack, useRootNavigationState, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from 'expo-status-bar';
 import * as TaskManager from "expo-task-manager";
@@ -14,30 +14,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, SafeAreaView, View } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-
-Notifications.setNotificationHandler({
-    handleNotification: async (notification) => {
-        const title = notification.request.content.title;
-
-        if (title === "getLocation") {
-            return {
-                shouldShowAlert: false,
-                shouldPlaySound: false,
-                shouldSetBadge: false,
-                shouldShowBanner: false,
-                shouldShowList: false,
-            };
-        }
-
-        return {
-            shouldShowAlert: true,
-            shouldPlaySound: true,
-            shouldSetBadge: true,
-            shouldShowBanner: true,
-            shouldShowList: true,
-        };
-    },
-});
 
 const BACKGROUND_NOTIFICATION_TASK = "BACKGROUND-NOTIFICATION-TASK";
 
@@ -51,8 +27,6 @@ TaskManager.defineTask(
         });
     }
 );
-
-Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -91,12 +65,9 @@ const sendLocationToServer = async (location: any, source: string) => {
             timestamp: timestamp,
         };
 
-        console.log(`📍 ${source}: Отправляем геолокацию:`, locationData);
-        
         // Отправляем геолокацию через API
         await apiService.updateData(courierId, "point", locationData);
         
-        console.log(`✅ ${source}: Геолокация успешно отправлена`);
         return true;
     } catch (error) {
         console.error(`❌ ${source}: Ошибка отправки геолокации:`, error);
@@ -115,7 +86,6 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
         const { locations } = data as any;
         if (locations && locations.length > 0) {
             const location = locations[0];
-            console.log('📍 ОСНОВНАЯ ЗАДАЧА: Новая позиция при движении');
             
             // Проверяем онлайн статус перед отправкой
             if (global.isOnline) {
@@ -130,6 +100,9 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 export default function RootLayout() {
     // Предотвращаем затухание экрана когда приложение открыто
     useKeepAwake();
+    const router = useRouter();
+    const segments = useSegments();
+    const rootNavigationState = useRootNavigationState();
 
     const [courier, setCourier] = useState<CourierData | null>(null);
     const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
@@ -139,31 +112,76 @@ export default function RootLayout() {
     const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
     const [notificationPermissionGranted, setNotificationPermissionGranted] = useState(false);
 
-    const notificationListener = useRef<Notifications.Subscription | null>(null);
-    const responseListener = useRef<Notifications.Subscription | null>(null);
-
-    const [initialRoute, setInitialRoute] = useState<"start" | "main">("start");
+    const notificationListener = useRef<{ remove: () => void } | null>(null);
+    const responseListener = useRef<{ remove: () => void } | null>(null);
+    const hasInitializedAuth = useRef(false);
 
     useEffect(() => {
-        SplashScreen.hideAsync();
-    }, []);
-
-    const fetchCourierData = async () => {
-        try {
-            const res = await apiService.getData();
-            if (res.success && res.userData) {
-                setInitialRoute(res.success ? "main" : "start");
-                await updateCourierData(res.userData);
-                setCourier(res.userData);
-                return res.userData._id;
-            }
-            return null;
-        } catch (error) {
-            console.error('Ошибка при получении данных курьера:', error);
-            Alert.alert('Ошибка', 'Не удалось получить данные курьера');
-            return null;
+        if (!rootNavigationState?.key || hasInitializedAuth.current) {
+            return;
         }
-    };
+
+        hasInitializedAuth.current = true;
+        let isMounted = true;
+
+        const navigateToInitialRoute = (hasToken: boolean) => {
+            const targetRoute = hasToken ? 'main' : 'start';
+            if (segments[0] !== targetRoute) {
+                router.replace(`/${targetRoute}`);
+            }
+        };
+
+        const initAuth = async () => {
+            try {
+                const tokenData = await getTokenData();
+
+                if (tokenData?.token) {
+                    try {
+                        const res = await apiService.getData();
+                        if (res.success && res.userData) {
+                            await updateCourierData(res.userData);
+                            if (isMounted) {
+                                setCourier(res.userData);
+                            }
+                        } else {
+                            const cached = await getCourierData();
+                            if (cached && isMounted) {
+                                setCourier(cached);
+                            }
+                        }
+                    } catch {
+                        const cached = await getCourierData();
+                        if (cached && isMounted) {
+                            setCourier(cached);
+                        }
+                    }
+
+                    if (isMounted) {
+                        navigateToInitialRoute(true);
+                    }
+                } else if (isMounted) {
+                    navigateToInitialRoute(false);
+                }
+            } catch (error) {
+                console.error('Ошибка при инициализации сессии:', error);
+                const tokenData = await getTokenData();
+                if (isMounted) {
+                    navigateToInitialRoute(!!tokenData?.token);
+                }
+            } finally {
+                if (isMounted) {
+                    setIsInitialized(true);
+                    await SplashScreen.hideAsync();
+                }
+            }
+        };
+
+        initAuth();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [rootNavigationState?.key]);
 
     const requestPermissions = async () => {
         try {
@@ -194,13 +212,18 @@ export default function RootLayout() {
             }
             
             // 3. Разрешение на уведомления
-            const { status: notificationStatus } = await Notifications.getPermissionsAsync();
-            if (notificationStatus !== 'granted') {
-                const { status } = await Notifications.requestPermissionsAsync();
-                console.log('🔔 Разрешение на уведомления:', status);
-                setNotificationPermissionGranted(status === 'granted');
-            } else {
-                setNotificationPermissionGranted(true);
+            if (isRemotePushSupported()) {
+                const Notifications = await loadNotifications();
+                if (Notifications) {
+                    const { status: notificationStatus } = await Notifications.getPermissionsAsync();
+                    if (notificationStatus !== 'granted') {
+                        const { status } = await Notifications.requestPermissionsAsync();
+                        console.log('🔔 Разрешение на уведомления:', status);
+                        setNotificationPermissionGranted(status === 'granted');
+                    } else {
+                        setNotificationPermissionGranted(true);
+                    }
+                }
             }
             
             console.log('✅ Все разрешения обработаны');
@@ -212,78 +235,107 @@ export default function RootLayout() {
     };
 
     useEffect(() => {
-        const getToken = async () => {
+        let isMounted = true;
+
+        const setupNotifications = async () => {
+            const Notifications = await loadNotifications();
+            if (!Notifications || !isMounted) {
+                return;
+            }
+
+            Notifications.setNotificationHandler({
+                handleNotification: async (notification) => {
+                    const title = notification.request.content.title;
+
+                    if (title === "getLocation") {
+                        return {
+                            shouldShowAlert: false,
+                            shouldPlaySound: false,
+                            shouldSetBadge: false,
+                            shouldShowBanner: false,
+                            shouldShowList: false,
+                        };
+                    }
+
+                    return {
+                        shouldShowAlert: true,
+                        shouldPlaySound: true,
+                        shouldSetBadge: true,
+                        shouldShowBanner: true,
+                        shouldShowList: true,
+                    };
+                },
+            });
+
+            await Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
+
             const token = await registerForPushNotificationsAsync();
             console.log("_layout.tsx token = ", token);
 
             if (token) {
                 await saveNotificationTokenData({ notificationPushToken: token });
-                
-                // Обновляем токен на сервере только если есть courier._id
+
                 if (courier?._id) {
                     await apiService.updateData(courier._id, "notificationPushToken", token);
                 }
             }
-        }
 
-        getToken();
+            notificationListener.current =
+                Notifications.addNotificationReceivedListener(async (notification) => {
+                    console.log("🔔 Notification Received: ", notification);
 
-        notificationListener.current =
-        Notifications.addNotificationReceivedListener( async (notification) => {
-            console.log("🔔 Notification Received: ", notification);
-            
-            try {
-                let courierId = courier?._id;
-                if (!courier?._id) {
-                    console.log("🔔 No courier ID, fetching data...");
-                    const res = await apiService.getData();
-                    if (res.success && res.userData) {
-                        courierId = res.userData._id;
-                        await updateCourierData(res.userData);
-                        setCourier(res.userData);
-                        console.log("🔔 Courier data updated:", res.userData);
-                    } else {
-                        console.error('Не удалось получить данные курьера');
-                        return;
+                    try {
+                        let courierId = courier?._id;
+                        if (!courier?._id) {
+                            console.log("🔔 No courier ID, fetching data...");
+                            const res = await apiService.getData();
+                            if (res.success && res.userData) {
+                                courierId = res.userData._id;
+                                await updateCourierData(res.userData);
+                                setCourier(res.userData);
+                                console.log("🔔 Courier data updated:", res.userData);
+                            } else {
+                                console.error('Не удалось получить данные курьера');
+                                return;
+                            }
+                        }
+
+                        if (notification.request.content.title === "newOrder") {
+                            console.log("🔔 New order notification received");
+                            const orderData = notification.request.content.data.order as Order;
+                            if (orderData) {
+                                console.log("🔔 Order data:", orderData);
+                                setCurrentOrder(orderData);
+                                setShowNotification(true);
+                                setIsOrderAccepted(false);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Ошибка обработки уведомления:', error);
                     }
-                }
-                
-                if (notification.request.content.title === "newOrder") {
-                    console.log("🔔 New order notification received");
-                    const orderData = notification.request.content.data.order as Order;
-                    if (orderData) {
-                        console.log("🔔 Order data:", orderData);
+                });
+
+            responseListener.current =
+                Notifications.addNotificationResponseReceivedListener((response) => {
+                    console.log("🔔 Notification Response: ", response.notification.request.content);
+
+                    const { title, data } = response.notification.request.content;
+
+                    if (title === "newOrder" && data?.order) {
+                        const orderData = data.order as Order;
                         setCurrentOrder(orderData);
                         setShowNotification(true);
                         setIsOrderAccepted(false);
                     }
-                }
-            } catch (error) {
-                console.error('Ошибка обработки уведомления:', error);
-            }
-        });
+                });
+        };
 
-        responseListener.current =
-        Notifications.addNotificationResponseReceivedListener((response) => {
-            console.log("🔔 Notification Response: ", response.notification.request.content);
-            
-            const { title, data } = response.notification.request.content;
-            
-            if (title === "newOrder" && data?.order) {
-                const orderData = data.order as Order;
-                setCurrentOrder(orderData);
-                setShowNotification(true);
-                setIsOrderAccepted(false);
-            }
-        });
+        setupNotifications();
 
         return () => {
-            if (notificationListener.current) {
-                Notifications.removeNotificationSubscription(notificationListener.current);
-            }
-            if (responseListener.current) {
-                Notifications.removeNotificationSubscription(responseListener.current);
-            }
+            isMounted = false;
+            notificationListener.current?.remove();
+            responseListener.current?.remove();
         };
     }, []);
 
@@ -305,19 +357,24 @@ export default function RootLayout() {
 
     const getNotificationToken = async () => {
         try {
+            const Notifications = await loadNotifications();
+            if (!Notifications) {
+                return;
+            }
+
             if (!notificationPermissionGranted) {
                 const { status } = await Notifications.requestPermissionsAsync();
                 console.log("_layout.tsx status = ", status);
-                
+
                 if (status !== 'granted') return;
             }
-            
+
             const token = await registerForPushNotificationsAsync();
             console.log("_layout.tsx token = ", token);
-            
+
             if (token) {
                 await saveNotificationTokenData({ notificationPushToken: token });
-                
+
                 if (courier?._id) {
                     await apiService.updateData(courier._id, "notificationPushToken", token);
                 }
@@ -328,42 +385,45 @@ export default function RootLayout() {
     };
 
     useEffect(() => {
-        fetchCourierData();
-    }, []);
-
-    useEffect(() => {
         if (courier?._id) {
             getNotificationToken();
         }
     }, [courier?._id]);
 
-    // ЗАПУСК ОТСЛЕЖИВАНИЯ ГЕОЛОКАЦИИ
     useEffect(() => {
         if (!courier?._id) return;
-        
+
         global.courierId = courier._id;
-        global.isOnline = courier.onTheLine; // Устанавливаем онлайн статус
-        
+        global.isOnline = courier.onTheLine;
+    }, [courier?._id, courier?.onTheLine]);
+
+    // ЗАПУСК ОТСЛЕЖИВАНИЯ ГЕОЛОКАЦИИ (один раз на сессию курьера)
+    useEffect(() => {
+        if (!courier?._id) {
+            Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME).catch(() => {});
+            return;
+        }
+
+        const courierId = courier._id;
+
         const startLocationTracking = async () => {
             console.log('🚀 Запуск отслеживания геолокации...');
-            console.log('📊 Статус курьера: ID =', courier._id, ', Онлайн =', courier.onTheLine);
-            
-            // Запрашиваем все необходимые разрешения
+            console.log('📊 Статус курьера: ID =', courierId, ', Онлайн =', global.isOnline);
+
             const hasPermissions = await requestPermissions();
             if (!hasPermissions) {
                 console.error('❌ Нет разрешений для отслеживания геолокации');
                 return;
             }
-            
-            // Проверяем, не запущено ли уже отслеживание
+
             const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
-            
+
             if (!hasStarted) {
                 try {
                     await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
                         accuracy: Location.Accuracy.Balanced,
-                        timeInterval: undefined, // Убираем временной интервал
-                        distanceInterval: 1000, // Каждые 1000 метров
+                        timeInterval: undefined,
+                        distanceInterval: 1000,
                         showsBackgroundLocationIndicator: true,
                         foregroundService: {
                             notificationTitle: 'Отслеживание местоположения',
@@ -371,7 +431,7 @@ export default function RootLayout() {
                             notificationColor: '#DC1818',
                         },
                     });
-                    
+
                     console.log('✅ Отслеживание геолокации запущено (каждые 1000 метров)');
                 } catch (error) {
                     console.error('❌ Ошибка запуска отслеживания:', error);
@@ -380,19 +440,22 @@ export default function RootLayout() {
                 console.log('ℹ️ Отслеживание уже запущено');
             }
         };
-        
+
         startLocationTracking();
-        
+
         return () => {
-            // Очистка при размонтировании компонента
-            Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME).catch(console.error);
+            Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME).catch(() => {});
         };
-    }, [courier?._id, courier?.onTheLine]); // Добавляем зависимость от onTheLine
+    }, [courier?._id]);
+
+    if (!rootNavigationState?.key || !isInitialized) {
+        return null;
+    }
 
     return (
         <SafeAreaView style={{flex: 1}}>
             <SafeAreaProvider>
-                <Stack screenOptions={{ headerShown: false, gestureEnabled: false }} initialRouteName={initialRoute}>
+                <Stack screenOptions={{ headerShown: false, gestureEnabled: false }}>
                     <Stack.Screen name="start" />
                     <Stack.Screen name="login" />
                     <Stack.Screen name="register" />
@@ -400,7 +463,6 @@ export default function RootLayout() {
                     <Stack.Screen name="registerAccepted" />
 
                     <Stack.Screen name="main" />
-                    <Stack.Screen name="map" />
                     <Stack.Screen name="orderStatus" />
                     <Stack.Screen name="success" />
                     <Stack.Screen name="cancelled" />

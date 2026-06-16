@@ -1,16 +1,30 @@
-import React, { useCallback, useState } from 'react';
-import { Image, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // import OrderDetails from '../components/OrderDetails';
 import MyButton from '@/components/MyButton';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { apiService } from '../api/services';
 import { CourierData, Order } from '../types/interfaces';
+import { addNeedCallVisitedOrderId, hasNeedCallVisitedOrderId } from '../utils/storage';
+
+const API_ORIGIN = "https://api.tibetskayacrm.kz";
+
+const getImageUrl = (url: string) => {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    return `${API_ORIGIN}${url.startsWith("/") ? url : `/${url}`}`;
+};
 
 const OrderStatus = () => {
     const router = useRouter();
     const [orderDetails, setOrderDetails] = useState<Order | null>(null);
     const [courier, setCourier] = useState<CourierData | null>(null);
     const [isPhoneModalVisible, setIsPhoneModalVisible] = useState(false);
+    const [orderId, setOrderId] = useState<string>("");
+    const [currentPhone, setCurrentPhone] = useState<string[]>([]);
+    const [addressImages, setAddressImages] = useState<string[]>([]);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [communicationMethod, setCommunicationMethod] = useState<string>("phone");
 
     // Функция для разделения номеров телефона
     const getPhoneNumbers = (phoneString: string) => {
@@ -37,24 +51,56 @@ const OrderStatus = () => {
     };
 
     const fetchOrderData = async () => {
+        if (!orderId) {
+            return;
+        }
+        const orderData = await apiService.getOrder(orderId);
+        const currentAddress = orderData.order.client.addresses.find((address: any) => address.name === orderData.order.address.name);
+        const phones = getPhoneNumbers(currentAddress?.phone ?? orderData.order.address.phone ?? "");
+        const details = { ...orderData.order, step: "toClient" as const };
+
+        setCurrentPhone(phones);
+        setAddressImages(Array.isArray(currentAddress?.images) ? currentAddress.images : []);
+        setOrderDetails(details);
+
+        if (details.needCall && details._id) {
+            const alreadyVisited = await hasNeedCallVisitedOrderId(details._id);
+            if (!alreadyVisited) {
+                await addNeedCallVisitedOrderId(details._id);
+                router.push({
+                    pathname: '/chat' as any,
+                    params: {
+                        notificationToken: details.notificationToken ?? '',
+                        currentPhone: JSON.stringify(phones),
+                    },
+                });
+            }
+        }
+    };
+
+    const fetchCourierData = async () => {
         const courierData = await apiService.getData();
         if (courierData.success) {
             setCourier(courierData.userData);
             if (courierData.userData.order.orderId) {
-                setOrderDetails(courierData.userData.order)
-                console.log("orderDetails = ", courierData.userData.order);
+                setOrderId(courierData.userData.order.orderId);
             } else {
                 setOrderDetails(null)
             }
         }
     };
 
+    useEffect(() => {
+        if (orderId) {
+            fetchOrderData();
+        }
+    }, [orderId]);
+
     useFocusEffect(
         useCallback(() => {
-            fetchOrderData();
+            fetchCourierData();
         }, [])
     );
-
 
     const handleStepChange = async () => {
         if (courier?._id) {
@@ -103,97 +149,228 @@ const OrderStatus = () => {
 
             <View style={styles.content}>
                 <ScrollView style={styles.scrollView}>
-                    <View style={styles.summarySection}>
-                        <Text style={styles.price}>
-                            {orderDetails?.sum ?? 0} ₸ 
+
+                    <View style={{backgroundColor: '#f9f9fb', paddingVertical: 12, paddingHorizontal: 8, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                            <View style={{backgroundColor: "#FEF2F2", borderRadius: 100, padding: 8}}>
+                                <Image source={require("../assets/images/dollar.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                            </View>
+                            <View>
+                                <Text style={{fontSize: 12, fontWeight: '400', color: '#6A7282'}}>Ваш заработок</Text>
+                                <Text style={{fontSize: 14, fontWeight: '500'}}>
+                                    {orderDetails.products.b12 * (courier?.price12 || 0) + orderDetails.products.b19 * (courier?.price19 || 0)} ₸
+                                </Text>
+                            </View>
+                        </View>
+                        <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                            <View>
+                                <Text style={{fontSize: 12, fontWeight: '400', color: '#6A7282'}}>Форма оплаты</Text>
+                                <Text style={{fontSize: 14, fontWeight: '500'}}>
+                                    {orderDetails?.opForm === "fakt" ? "Нал/Карта/QR" : orderDetails?.opForm === "credit" ? "Карта" : orderDetails?.opForm === "coupon" ? "Талоны" : orderDetails?.opForm === "postpay" ? "Постоплата" : orderDetails?.opForm === "mixed" ? "Смешанная" : ""}
+                                </Text>
+                            </View>
+                            <View style={{backgroundColor: "#FEF2F2", borderRadius: 100, padding: 8}}>
+                                {orderDetails?.opForm === "fakt" ? (
+                                    <Image source={require("../assets/images/cash.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                                ) : orderDetails?.opForm === "credit" ? (
+                                    <Image source={require("../assets/images/card.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                                ) : orderDetails?.opForm === "coupon" ? (
+                                    <Image source={require("../assets/images/coupon.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                                ) : orderDetails?.opForm === "postpay" ? (
+                                    <Image source={require("../assets/images/card.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                                ) : ""}
+                            </View>
+                            
+                        </View>
+
+                    </View>
+
+                    <View style={styles.section}>
+                        <Text style={{fontSize: 16, fontWeight: '500', color: '#7d7d7f'}}>
+                            Доставка воды
                         </Text>
-                        <Text style={styles.description}>
-                            Ваш ожидаемый заработок за доставку
-                        </Text>
-                        <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
-                            Клиент: {orderDetails?.clientTitle ?? ''}
-                        </Text>
-                        <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
-                            Количество бутылей:
-                        </Text>
-                        <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
-                            12,5л: {orderDetails?.products?.b12 ?? 0} бутылей
-                        </Text>
-                        <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
-                            19,8л: {orderDetails?.products?.b19 ?? 0} бутылей
-                        </Text>
-                        <Text style={{fontSize: 16, fontWeight: '500', marginTop: 8}}>
-                            Форма оплаты: {orderDetails?.opForm === "fakt" ? "Нал/Карта/QR" : orderDetails?.opForm === "credit" ? "В долг" : orderDetails?.opForm === "coupon" ? "Талоны" : orderDetails?.opForm === "postpay" ? "Постоплата" : orderDetails?.opForm === "mixed" ? "Смешанная" : ""}
-                        </Text>
+                        <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8}}>
+                            <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                                <Image source={require("../assets/images/fullBottle.png")} style={{width: 45, height: 72}} resizeMode='contain' />
+                                <View>
+                                    {orderDetails?.products?.b12 > 0 && 
+                                        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                                            <Text style={{fontSize: 16, fontWeight: '700'}}>x {orderDetails?.products?.b12 ?? 0}</Text>
+                                            <Text style={{fontSize: 14, fontWeight: '500', color: "#7d7d7f"}}>(12,5)</Text>
+                                        </View>
+                                    } 
+                                    {orderDetails?.products?.b19 > 0 && 
+                                        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                                            <Text style={{fontSize: 16, fontWeight: '700'}}>x {orderDetails?.products?.b19 ?? 0}</Text>
+                                            <Text style={{fontSize: 14, fontWeight: '500', color: "#7d7d7f"}}>(18,9)</Text>
+                                        </View>
+                                    } 
+                                    <Text style={{fontSize: 12, fontWeight: '400', color: '#7d7d7f'}}>Доставить</Text>
+                                </View>
+                            </View>
+                            <View style={{width: 1, height: 80, backgroundColor: '#E3E3E3'}} />
+                            <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                                <Image source={require("../assets/images/emptyBottle.png")} style={{width: 45, height: 72}} resizeMode='contain' />
+                                <View>
+                                    {orderDetails?.products?.b12 > 0 && 
+                                        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                                            <Text style={{fontSize: 16, fontWeight: '700'}}>x {orderDetails?.products?.b12 ?? 0}</Text>
+                                            <Text style={{fontSize: 14, fontWeight: '500', color: "#7d7d7f"}}>(12,5)</Text>
+                                        </View>
+                                    } 
+                                    {orderDetails?.products?.b19 > 0 && 
+                                        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                                            <Text style={{fontSize: 16, fontWeight: '700'}}>x {orderDetails?.products?.b19 ?? 0}</Text>
+                                            <Text style={{fontSize: 14, fontWeight: '500', color: "#7d7d7f"}}>(18,9)</Text>
+                                        </View>
+                                    } 
+                                    <Text style={{fontSize: 12, fontWeight: '400', color: '#7d7d7f'}}>Пустых забрать</Text>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+
+                    <View style={[styles.section, {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}]}>
+                        <View style={{width: '50%'}}>
+                            <Text style={{fontSize: 12, fontWeight: '400', color: '#7d7d7f'}}>Клиент</Text>
+                            <Text style={{fontSize: 14, fontWeight: '500', color: '#000', marginTop: 4}}>{orderDetails?.client?.fullName ?? ''}</Text>
+                        </View>
+                        <TouchableOpacity 
+                            onPress={() => {
+                                if (currentPhone.length === 1) {
+                                    Linking.openURL(`tel:${currentPhone[0]}`);
+                                }
+                                if (currentPhone.length > 1) {
+                                    setCommunicationMethod("phone");
+                                    setIsPhoneModalVisible(true);
+                                }
+                                if (currentPhone.length === 0) {
+                                    Alert.alert('Ошибка', 'У клиента нет номеров телефона');
+                                }
+                            }}
+                            style={{padding: 16, backgroundColor: '#f9f9fb', borderRadius: 100, alignItems: 'center', justifyContent: 'center'}}>
+                            <Image source={require("../assets/images/call.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            onPress={() => {
+                                if (currentPhone.length === 1) {
+                                    const normalizedPhone = normalizePhoneForWhatsApp(currentPhone[0]);
+                                    Linking.openURL(`https://wa.me/${normalizedPhone}`);
+                                }
+                                if (currentPhone.length > 1) {
+                                    setCommunicationMethod("whatsapp");
+                                    setIsPhoneModalVisible(true);
+                                }
+                                if (currentPhone.length === 0) {
+                                    Alert.alert('Ошибка', 'У клиента нет номеров телефона');
+                                }
+                            }}
+                            style={{padding: 16, backgroundColor: '#f9f9fb', borderRadius: 100, alignItems: 'center', justifyContent: 'center'}}>
+                            <Image source={require("../assets/images/whatsapp.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                        </TouchableOpacity>
                     </View>
 
                     <TouchableOpacity
-                        style={styles.mapLink}
                         onPress={() => {
-                            if (orderDetails?.step === 'toAquaMarket') {
-                                Linking.openURL(orderDetails.aquaMarketAddressLink || '');
-                            } 
-                            if (orderDetails?.step === 'toClient') {
-                                Linking.openURL(orderDetails?.clientAddressLink || '');
-                            }
+                            Linking.openURL(orderDetails?.address?.link || '');
                         }}
+                        style={[styles.section, {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}]}
                     >
-                        <View style={styles.mapLinkLeft}>
-                            <Image source={require("../assets/images/map.png")} style={styles.mapIcon} resizeMode='contain' />
-                            <Text style={styles.mapText}>
-                                Посмотреть на карте
-                            </Text>
+                        <View style={{flexDirection: 'row', alignItems: 'center', width: '80%'}}>
+                            <Image source={require("../assets/images/location.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                            <View style={{marginLeft: 8}}>
+                                <Text style={{fontSize: 14, fontWeight: '400', color: '#000'}}>Адрес доставки</Text>
+                                <Text style={{fontSize: 16, fontWeight: '500', color: '#292D32', marginTop: 4, marginLeft: 4}}>{orderDetails?.address?.actual ?? ''}</Text>
+                            </View>
                         </View>
-
-                        <View style={styles.mapLinkRight}>
-                            <Text style={styles.mapService}>2 GIS</Text>
-                            <Image source={require("../assets/images/arrowRight.png")} style={styles.arrowIcon} resizeMode='contain' />
-                        </View>
+                        <Image source={require("../assets/images/arrowRight.png")} style={{width: 24, height: 24}} resizeMode='contain' />
                     </TouchableOpacity>
 
-                    {/* <View style={styles.routeContainer}>
-                        <View style={styles.routeImageContainer}>
-                            {orderDetails?.step === 'toAquaMarket' && <Image source={require("../assets/images/wayToAqua.png")} style={styles.routeImage} resizeMode='contain' />}
-                            {orderDetails?.step === 'toClient' && <Image source={require("../assets/images/wayToClient.png")} style={styles.routeImage} resizeMode='contain' />}
-                        </View>
-                        <View style={styles.routeDetailsContainer}>
-                            <View>
-                                <Text style={styles.locationText}>
-                                    Текущее местоположение
-                                </Text>
-                            </View>
-                            <View>
-                                <Text style={styles.locationText}>
-                                    {orderDetails?.aquaMarketAddress}
-                                </Text>
-                            </View>
-                            <View>
-                                <Text style={styles.locationText}>
-                                    {orderDetails?.clientAddress}
-                                </Text>
-                            </View>
-                        </View>
-                    </View>
-                    <View style={styles.spacer} /> */}
-                    <View style={{ marginTop: 8}}>
-                        <Text style={styles.subTitle}>Адрес: {orderDetails?.clientAddress ?? ''}</Text>
-                    </View>
-                    <View style={{ marginVertical: 8}}>
-                        <MyButton
-                            title={`Номер: ${orderDetails?.clientPhone ?? ''}`}
+                    {addressImages.length > 0 && (
+                        <TouchableOpacity
                             onPress={() => {
-                                if (orderDetails?.clientPhone) {
-                                    setIsPhoneModalVisible(true);
-                                }
-                            }}
-                            variant="outlined"
-                            width="full"
-                        />
-                    </View>
-                    <View>
-                        <Text style={styles.subTitle}>Комментарий: {orderDetails?.comment ?? ''}</Text>
-                    </View>
+                                router.push({
+                                    pathname: '/addressImages' as any,
+                                    params: {
+                                        addressName: orderDetails?.address?.actual ?? '',
+                                        images: JSON.stringify(addressImages),
+                                    },
+                                });
+                            }} 
+                            style={styles.section}
+                        >
+                            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                                <Image source={require("../assets/images/location.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                                <Text style={{fontSize: 12, fontWeight: '500', color: '#000', marginLeft: 8}}>Как найти вход</Text>
+                                <Text style={{fontSize: 12, fontWeight: '400', color: '#7d7d7f', marginLeft: 4}}>({addressImages.length} фото)</Text>
+                            </View>
+                            <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginLeft: -8, marginRight: -8, paddingHorizontal: 8 }}>
+                                {addressImages.map((imgUrl, idx) => (
+                                    <TouchableOpacity
+                                        key={idx}
+                                        style={{
+                                            marginRight: 10,
+                                            borderRadius: 8,
+                                            overflow: 'hidden',
+                                            borderWidth: 1,
+                                            borderColor: '#E5E5EA',
+                                            backgroundColor: '#fafbfc',
+                                        }}
+                                        onPress={() => setSelectedImage(getImageUrl(imgUrl))}
+                                    >
+                                        <Image
+                                            source={{ uri: getImageUrl(imgUrl) }}
+                                            style={{ width: 85, height: 85, borderRadius: 8 }}
+                                            resizeMode='cover'
+                                        />
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </TouchableOpacity>
+                    )}
+
+                    {orderDetails.needCall && (
+                        <View style={styles.section}>
+                            <Text style={{fontSize: 16, fontWeight: '500', color: '#000'}}>Предварительно позвонить</Text>
+                        </View>
+                    )}
+
+                    {orderDetails?.comment && (
+                        <View style={[styles.section, {flexDirection: 'row', alignItems: 'flex-start'}]}>
+                            <Image source={require("../assets/images/comments.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                            <View style={{marginLeft: 8}}>
+                                <Text style={{fontSize: 14, fontWeight: '500', color: '#7d7d7f'}}>Комментарий</Text>
+                                <Text style={{fontSize: 12, fontWeight: '400', color: '#292D32', marginTop: 4, marginLeft: 4}}>{orderDetails?.comment ?? ''}</Text>
+                            </View>
+                        </View>
+                    )}
                     <View style={styles.buttonContainer}>
+                        <TouchableOpacity 
+                            onPress={() => {
+                                router.push({
+                                    pathname: '/chat' as any,
+                                    params: { notificationToken: orderDetails?.notificationToken ?? '', currentPhone: JSON.stringify(currentPhone) }
+                                });
+                            }}
+                            style={{
+                                backgroundColor: '#18376e',
+                                padding: 16,
+                                borderRadius: 12,
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                flexDirection: 'row',
+                                marginBottom: 12,
+                            }}
+                        >
+                            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                                <Image source={require("../assets/images/whiteComments.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                                <View style={{marginLeft: 8}}>
+                                    <Text style={{fontSize: 12, fontWeight: '500', color: '#fff'}}>Написать клиенту</Text>
+                                    <Text style={{fontSize: 12, fontWeight: '400', color: '#fff'}}>Начать чат с клиентом</Text>
+                                </View>
+                            </View>
+                            <Image source={require("../assets/images/whiteChevronRight.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                        </TouchableOpacity>
                         {orderDetails?.step === 'toAquaMarket' ? (
                             <MyButton
                                 title="Заказ у меня"
@@ -206,13 +383,14 @@ const OrderStatus = () => {
                                 title="Отдать заказ"
                                 onPress={() => {
                                     router.push({
-                                        pathname: '/changeOrderBottles' as any,
+                                        pathname: '/orderCompletion' as any,
                                         params: { 
                                             formData: JSON.stringify({ 
-                                                orderId: orderDetails?.orderId, 
-                                                income: orderDetails?.income,
-                                                isFinish: true,
-                                                products: orderDetails?.products
+                                                orderId: orderDetails?._id,
+                                                products: orderDetails?.products,
+                                                opForm: orderDetails?.opForm,
+                                                price12: orderDetails?.client?.price12,
+                                                price19: orderDetails?.client?.price19,
                                             }) 
                                         }
                                     });
@@ -223,10 +401,14 @@ const OrderStatus = () => {
                         )}
                         <TouchableOpacity
                             onPress={() => {
-                                router.push({
-                                    pathname: '/cancelledReason' as any,
-                                    params: { formData: JSON.stringify({ orderId: orderDetails?.orderId, income: orderDetails?.income }) }
-                                })
+                                if (courier) {
+                                    router.push({
+                                        pathname: '/cancelledReason' as any,
+                                        params: { formData: JSON.stringify({ orderId: orderDetails?._id, income: orderDetails?.products.b12 * (courier.price12 || 0) + orderDetails?.products?.b19 * (courier?.price19 || 0) }) }
+                                    })
+                                } else {
+                                    console.log("error in cancelled order, courier = ", courier)
+                                }
                             }}
                             style={styles.secondaryButton}
                         >
@@ -240,7 +422,6 @@ const OrderStatus = () => {
                 {/* <View style={styles.footer}>
                     {orderDetails && <OrderDetails order={orderDetails} onStepChange={handleStepChange} />}
                 </View> */}
-                
             </View>
 
             <Modal
@@ -251,35 +432,23 @@ const OrderStatus = () => {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Выберите способ связи</Text>
-                        {getPhoneNumbers(orderDetails?.clientPhone || '').map((phone, index) => (
+                        {currentPhone.map((phone, index) => (
                             <View key={index} style={styles.phoneNumberContainer}>
-                                <Text style={styles.phoneNumberLabel}>{phone}</Text>
-                                <View style={styles.phoneActionsRow}>
-                                    <View style={styles.phoneActionButton}>
-                                        <MyButton
-                                            title="Позвонить"
-                                            onPress={() => {
-                                                Linking.openURL(`tel:${phone}`);
-                                                setIsPhoneModalVisible(false);
-                                            }}
-                                            variant="outlined"
-                                            width="full"
-                                        />
-                                    </View>
-                                    <View style={styles.phoneActionButton}>
-                                        <MyButton
-                                            title="WhatsApp"
-                                            onPress={() => {
-                                                const normalizedPhone = normalizePhoneForWhatsApp(phone);
-                                                Linking.openURL(`https://wa.me/${normalizedPhone}`);
-                                                setIsPhoneModalVisible(false);
-                                            }}
-                                            variant="contained"
-                                            width="full"
-                                        />
-                                    </View>
-                                </View>
+                                <MyButton
+                                    title={phone}
+                                    onPress={() => {
+                                        if (communicationMethod === "phone") {
+                                            Linking.openURL(`tel:${phone}`);
+                                        }
+                                        if (communicationMethod === "whatsapp") {
+                                            const normalizedPhone = normalizePhoneForWhatsApp(phone);
+                                            Linking.openURL(`https://wa.me/${normalizedPhone}`);
+                                        }
+                                        setIsPhoneModalVisible(false);
+                                    }}
+                                    variant="outlined"
+                                    width="full"
+                                />
                             </View>
                         ))}
                         <View style={styles.cancelButton}>
@@ -293,6 +462,23 @@ const OrderStatus = () => {
                     </View>
                 </View>
             </Modal>
+
+            <Modal
+                visible={!!selectedImage}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setSelectedImage(null)}
+            >
+                <Pressable style={styles.fullImageOverlay} onPress={() => setSelectedImage(null)}>
+                    {selectedImage ? (
+                        <Image
+                            source={{ uri: selectedImage }}
+                            style={styles.fullImage}
+                            resizeMode="contain"
+                        />
+                    ) : null}
+                </Pressable>
+            </Modal>
         </View>
     );
 };
@@ -300,7 +486,7 @@ const OrderStatus = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F6F6F6',
+        backgroundColor: 'white',
         ...Platform.select({
             android: {
                 paddingTop: 38
@@ -308,11 +494,18 @@ const styles = StyleSheet.create({
             ios: {}
         })
     },
+    section: {
+        marginTop: 12,
+        borderWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: '#E3E3E3',
+        padding: 12,
+        borderRadius: 8
+    },
     header: {
         flexDirection: 'row',
         backgroundColor: 'white',
         alignItems: 'center',
-        marginBottom: 24,
         padding: 24
     },
     backButton: {
@@ -337,9 +530,11 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
-        paddingHorizontal: 24
+        paddingHorizontal: 24,
+        paddingBottom: 50,
     },
     summarySection: {
+        marginTop: 12,
         paddingBottom: 16,
         borderBottomWidth: 1,
         borderBottomColor: '#E3E3E3'
@@ -464,8 +659,7 @@ const styles = StyleSheet.create({
         marginLeft: 16
     },
     buttonContainer: {
-        marginTop: 24,
-        gap: 12
+        marginTop: 12,
     },
     primaryButton: {
         backgroundColor: '#DC1818',
@@ -544,7 +738,54 @@ const styles = StyleSheet.create({
     },
     cancelButton: {
         marginTop: 8
-    }
+    },
+    kaspiModalContent: {
+        backgroundColor: 'white',
+        borderRadius: 20,
+        padding: 24,
+        width: '100%',
+        maxWidth: 360,
+        alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    kaspiAmount: {
+        fontSize: 18,
+        fontWeight: '600',
+        marginBottom: 16,
+        color: '#333',
+    },
+    kaspiQrImage: {
+        width: 260,
+        height: 260,
+        marginBottom: 16,
+    },
+    kaspiLoader: {
+        marginVertical: 32,
+    },
+    kaspiHint: {
+        fontSize: 14,
+        color: '#545454',
+        textAlign: 'center',
+        marginBottom: 16,
+    },
+    fullImageOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 16,
+    },
+    fullImage: {
+        width: '100%',
+        height: '80%',
+    },
 });
 
 export default OrderStatus;

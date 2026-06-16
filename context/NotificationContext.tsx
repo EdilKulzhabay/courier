@@ -1,5 +1,6 @@
 import { registerForPushNotificationsAsync } from "@/utils/registerForPushNotificationsAsync";
-import * as Notifications from "expo-notifications";
+import { loadNotifications } from "@/utils/notifications";
+import type { Notification } from "expo-notifications";
 import React, {
     createContext,
     ReactNode,
@@ -8,81 +9,85 @@ import React, {
     useRef,
     useState,
 } from "react";
-  
-  interface NotificationContextType {
+
+interface NotificationContextType {
     expoPushToken: string | null;
-    notification: Notifications.Notification | null;
+    notification: Notification | null;
     error: Error | null;
-  }
-  
-  const NotificationContext = createContext<NotificationContextType | undefined>(
+}
+
+const NotificationContext = createContext<NotificationContextType | undefined>(
     undefined
-  );
-  
-  export const useNotification = () => {
+);
+
+export const useNotification = () => {
     const context = useContext(NotificationContext);
     if (context === undefined) {
-      throw new Error(
-        "useNotification must be used within a NotificationProvider"
-      );
+        throw new Error(
+            "useNotification must be used within a NotificationProvider"
+        );
     }
     return context;
-  };
-  
-  interface NotificationProviderProps {
+};
+
+interface NotificationProviderProps {
     children: ReactNode;
-  }
-  
-  export const NotificationProvider: React.FC<NotificationProviderProps> = ({
+}
+
+export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     children,
-  }) => {
+}) => {
     const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
-    const [notification, setNotification] =
-      useState<Notifications.Notification | null>(null);
+    const [notification, setNotification] = useState<Notification | null>(null);
     const [error, setError] = useState<Error | null>(null);
-  
-    const notificationListener = useRef<Notifications.Subscription | null>(null);
-    const responseListener = useRef<Notifications.Subscription | null>(null);
-  
+
+    const notificationListener = useRef<{ remove: () => void } | null>(null);
+    const responseListener = useRef<{ remove: () => void } | null>(null);
+
     useEffect(() => {
-      registerForPushNotificationsAsync().then(
-        (token) => setExpoPushToken(token),
-        (error) => setError(error)
-      );
-  
-      notificationListener.current =
-        Notifications.addNotificationReceivedListener((notification) => {
-          console.log("🔔 Notification Received: ", notification);
-          setNotification(notification);
-        });
-  
-      responseListener.current =
-        Notifications.addNotificationResponseReceivedListener((response) => {
-          console.log(
-            "🔔 Notification Response: ",
-            JSON.stringify(response, null, 2),
-            JSON.stringify(response.notification.request.content.data, null, 2)
-          );
-          // Handle the notification response here
-        });
-  
-      return () => {
-        if (notificationListener.current) {
-          Notifications.removeNotificationSubscription(
-            notificationListener.current
-          );
-        }
-        if (responseListener.current) {
-          Notifications.removeNotificationSubscription(responseListener.current);
-        }
-      };
+        let isMounted = true;
+
+        const setupNotifications = async () => {
+            const Notifications = await loadNotifications();
+            if (!Notifications || !isMounted) {
+                return;
+            }
+
+            registerForPushNotificationsAsync().then(
+                (token) => setExpoPushToken(token),
+                (setupError) => setError(setupError)
+            );
+
+            notificationListener.current =
+                Notifications.addNotificationReceivedListener((receivedNotification) => {
+                    console.log("🔔 Notification Received: ", receivedNotification);
+                    setNotification(receivedNotification);
+                });
+
+            responseListener.current =
+                Notifications.addNotificationResponseReceivedListener((response) => {
+                    console.log(
+                        "🔔 Notification Response: ",
+                        JSON.stringify(response, null, 2),
+                        JSON.stringify(response.notification.request.content.data, null, 2)
+                    );
+                });
+        };
+
+        setupNotifications();
+
+        return () => {
+            isMounted = false;
+            notificationListener.current?.remove();
+            responseListener.current?.remove();
+        };
     }, []);
-  
+
     return (
-      <NotificationContext.Provider
-        value={{ expoPushToken, notification, error }}
-      >
-        {children}
-      </NotificationContext.Provider>
+        <NotificationContext.Provider
+            value={{ expoPushToken, notification, error }}
+        >
+            {children}
+        </NotificationContext.Provider>
     );
-  };
+};

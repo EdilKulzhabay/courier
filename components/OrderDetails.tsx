@@ -121,7 +121,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onStepChange }) => {
         setCompleteOrderLoading(true);
         const courier = await getCourierData();
         if (courier) {
-            const res = await apiService.completeOrder(order.orderId, courier._id, order.products.b12, order.products.b19);
+            const res = await apiService.completeOrder(order.orderId, courier._id, order.products.b12, order.products.b19, 0, 0);
             if (res.success) {
                 const income = res.income;
                 router.push({

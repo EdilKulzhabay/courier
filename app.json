@@ -7,9 +7,9 @@
     "icon": "./assets/images/icon.png",
     "scheme": "tibetskayacourier",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.tibetskayacourier2.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -38,7 +38,7 @@
         "backgroundColor": "#DC3F34"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.courier.app",
+      "package": "com.tibetskayacourier2.app",
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
@@ -48,11 +48,7 @@
         "ACCESS_BACKGROUND_LOCATION",
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION"
-      ],
-      "foregroundService": {
-        "notificationTitle": "Отслеживание местоположения",
-        "notificationBody": "Ваше местоположение отправляется для доставки заказов"
-      }
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -65,7 +61,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash.png",
-          "imageWidth": 200,
+          "imageWidth": 280,
           "resizeMode": "contain",
           "backgroundColor": "#DC3F34"
         }

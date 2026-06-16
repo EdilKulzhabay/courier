@@ -1,4 +1,5 @@
 export interface Order {
+    _id: string;
     orderId: string;
     products: {
         b12: number;
@@ -29,6 +30,24 @@ export interface Order {
     createdAt: string;
     updatedAt: string;
     income: number;
+    needCall: boolean;
+    address: {
+        name: string;
+        actual: string;
+        link: string;
+        phone: string;
+        point: {
+            lat: number;
+            lon: number;
+        }
+    };
+    client: {
+        fullName: string;
+        _id: string;
+        price12: number;
+        price19: number;
+    };
+    notificationToken: string;
 }
 
 export interface CourierData {
@@ -37,6 +56,9 @@ export interface CourierData {
     email: string;
     phone: string;
     income: number;
+    availableIncome?: number;
+    price12?: number;
+    price19?: number;
     password: string;
     onTheLine: boolean;
     order?: Order;
@@ -76,6 +98,8 @@ export interface CourierData {
     capacity19?: number;
     createdAt: string;
     updatedAt: string;
+    emptyBottles12?: number;
+    emptyBottles19?: number;
 }
 
 export interface FinanceType {

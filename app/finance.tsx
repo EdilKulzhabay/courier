@@ -1,5 +1,5 @@
 import { apiService } from "@/api/services";
-import { OrderHistory } from "@/types/interfaces";
+import { CourierData, OrderHistory } from "@/types/interfaces";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Button, Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -18,6 +18,17 @@ const Finance = () => {
     const router = useRouter()
     const [groupedOrders, setGroupedOrders] = useState<GroupedOrders>({});
     const [loading, setLoading] = useState(false);
+    const [courierData, setCourierData] = useState<CourierData | null>(null);
+
+    useEffect(() => {
+        const fetchCourierData = async () => {
+            const response = await apiService.getData();
+            if (response.success) {
+                setCourierData(response.userData);
+            }
+        };
+        fetchCourierData();
+    }, []);
 
     const today = new Date();
     const sevenDaysAgo = new Date();
@@ -108,6 +119,13 @@ const Finance = () => {
         }
     };
 
+    const getAvailableIncome = (b12: number, b19: number, status: string) => {
+        if (status === "delivered") {
+            return b12 * (courierData?.price12 ?? 0) + b19 * (courierData?.price19 ?? 0);
+        }
+        return 0
+    };
+
     useEffect(() => {
         fetchOrders();
     }, [range.startDate, range.endDate]);
@@ -159,7 +177,7 @@ const Finance = () => {
                     resizeMode="contain"
                 />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>История заказов</Text>
+            <Text style={styles.headerTitle}>Финансы</Text>
         </View>
 
         <View style={styles.filterContainer}>
@@ -196,14 +214,13 @@ const Finance = () => {
                     <View key={index} style={styles.dateGroup}>
                         <Text style={styles.dateTitle}>{date}</Text>
                         {dateOrders.map((order) => {
-                            console.log("order = ", order);
                             return (
                                 <View key={order._id} style={styles.transactionCard}>
                                     <Text style={[
                                         order.status === "delivered" ? styles.successText : styles.regularText,
                                         styles.amountText
                                     ]}>
-                                        {order.status === "delivered" && "+"} {order.income} ₸
+                                        {order.status === "delivered" && "+"} {getAvailableIncome(order.products?.b12, order.products?.b19, order.status)} ₸
                                     </Text>
                                     <Text style={order.status === "delivered" ? styles.statusSuccess : styles.statusCanceled}>
                                         {order.status === "delivered" && "Начислено"} 
