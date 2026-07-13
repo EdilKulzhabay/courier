@@ -371,6 +371,34 @@ const OrderStatus = () => {
                             </View>
                             <Image source={require("../assets/images/whiteChevronRight.png")} style={{width: 24, height: 24}} resizeMode='contain' />
                         </TouchableOpacity>
+                        {orderDetails?.step === 'toClient' && (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    router.push({
+                                        pathname: '/orderChat' as any,
+                                        params: { orderId: orderDetails._id, clientTitle: orderDetails.client?.fullName ?? '' }
+                                    });
+                                }}
+                                style={{
+                                    backgroundColor: '#3da163',
+                                    padding: 16,
+                                    borderRadius: 12,
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    flexDirection: 'row',
+                                    marginBottom: 12,
+                                }}
+                            >
+                                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                                    <Image source={require("../assets/images/whiteComments.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                                    <View style={{marginLeft: 8}}>
+                                        <Text style={{fontSize: 12, fontWeight: '500', color: '#fff'}}>Чат с клиентом</Text>
+                                        <Text style={{fontSize: 12, fontWeight: '400', color: '#fff'}}>Переписка в реальном времени</Text>
+                                    </View>
+                                </View>
+                                <Image source={require("../assets/images/whiteChevronRight.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                            </TouchableOpacity>
+                        )}
                         {orderDetails?.step === 'toAquaMarket' ? (
                             <MyButton
                                 title="Заказ у меня"

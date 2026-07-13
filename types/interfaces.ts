@@ -117,6 +117,14 @@ export interface TokenData {
     token: string;
 }
 
+export interface OrderChatMessage {
+    _id: string;
+    text: string;
+    sender: 'client' | 'courier';
+    timestamp: string;
+    isRead?: boolean;
+}
+
 export interface NotificationTokenData {
     notificationPushToken: string;
 }

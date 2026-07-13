@@ -111,6 +111,7 @@ export default function RootLayout() {
     const [isInitialized, setIsInitialized] = useState(false);
     const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
     const [notificationPermissionGranted, setNotificationPermissionGranted] = useState(false);
+    const [pushToken, setPushToken] = useState<string | null>(null);
 
     const notificationListener = useRef<{ remove: () => void } | null>(null);
     const responseListener = useRef<{ remove: () => void } | null>(null);

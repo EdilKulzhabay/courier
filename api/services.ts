@@ -230,6 +230,28 @@ export const apiService = {
         }
     },
 
+    sendOrderChatMessage: async (orderId: string, text: string) => {
+        try {
+            const response = await api.post('/courier/sendOrderChatMessage', { orderId, text });
+            return response.data;
+        } catch (error: any) {
+            const message =
+                error?.response?.data?.message || 'Не удалось отправить сообщение';
+            return { success: false, message };
+        }
+    },
+
+    getOrderChatMessages: async (orderId: string) => {
+        try {
+            const response = await api.post('/courier/getOrderChatMessages', { orderId });
+            return response.data;
+        } catch (error: any) {
+            const message =
+                error?.response?.data?.message || 'Не удалось получить сообщения';
+            return { success: false, message };
+        }
+    },
+
     deleteCourierAggregator: async (courierId: string) => {
         try {
             const response = await api.post('/deleteCourierAggregator', { courierId });
