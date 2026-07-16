@@ -68,9 +68,10 @@ const OrderStatus = () => {
             if (!alreadyVisited) {
                 await addNeedCallVisitedOrderId(details._id);
                 router.push({
-                    pathname: '/chat' as any,
+                    pathname: '/orderChat' as any,
                     params: {
-                        notificationToken: details.notificationToken ?? '',
+                        orderId: details._id,
+                        clientTitle: details.client?.fullName ?? '',
                         currentPhone: JSON.stringify(phones),
                     },
                 });
@@ -166,7 +167,7 @@ const OrderStatus = () => {
                             <View>
                                 <Text style={{fontSize: 12, fontWeight: '400', color: '#6A7282'}}>Форма оплаты</Text>
                                 <Text style={{fontSize: 14, fontWeight: '500'}}>
-                                    {orderDetails?.opForm === "fakt" ? "Нал/Карта/QR" : orderDetails?.opForm === "credit" ? "Карта" : orderDetails?.opForm === "coupon" ? "Талоны" : orderDetails?.opForm === "postpay" ? "Постоплата" : orderDetails?.opForm === "mixed" ? "Смешанная" : ""}
+                                    {orderDetails?.opForm === "fakt" ? "Нал/Карта/QR" : orderDetails?.opForm === "credit" ? "Карта" : orderDetails?.opForm === "coupon" ? "Талоны" : orderDetails?.opForm === "postpay" ? "Постоплата" : orderDetails?.opForm === "mixed" ? "Смешанная" : orderDetails?.opForm === "qr" ? "QR" : ""}
                                 </Text>
                             </View>
                             <View style={{backgroundColor: "#FEF2F2", borderRadius: 100, padding: 8}}>
@@ -177,6 +178,8 @@ const OrderStatus = () => {
                                 ) : orderDetails?.opForm === "coupon" ? (
                                     <Image source={require("../assets/images/coupon.png")} style={{width: 24, height: 24}} resizeMode='contain' />
                                 ) : orderDetails?.opForm === "postpay" ? (
+                                    <Image source={require("../assets/images/card.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                                ) : orderDetails?.opForm === "qr" ? (
                                     <Image source={require("../assets/images/card.png")} style={{width: 24, height: 24}} resizeMode='contain' />
                                 ) : ""}
                             </View>
@@ -345,15 +348,15 @@ const OrderStatus = () => {
                         </View>
                     )}
                     <View style={styles.buttonContainer}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => {
                                 router.push({
-                                    pathname: '/chat' as any,
-                                    params: { notificationToken: orderDetails?.notificationToken ?? '', currentPhone: JSON.stringify(currentPhone) }
+                                    pathname: '/orderChat' as any,
+                                    params: { orderId: orderDetails._id, clientTitle: orderDetails.client?.fullName ?? '', currentPhone: JSON.stringify(currentPhone) }
                                 });
                             }}
                             style={{
-                                backgroundColor: '#18376e',
+                                backgroundColor: '#3da163',
                                 padding: 16,
                                 borderRadius: 12,
                                 alignItems: 'center',
@@ -365,40 +368,12 @@ const OrderStatus = () => {
                             <View style={{flexDirection: 'row', alignItems: 'center'}}>
                                 <Image source={require("../assets/images/whiteComments.png")} style={{width: 24, height: 24}} resizeMode='contain' />
                                 <View style={{marginLeft: 8}}>
-                                    <Text style={{fontSize: 12, fontWeight: '500', color: '#fff'}}>Написать клиенту</Text>
-                                    <Text style={{fontSize: 12, fontWeight: '400', color: '#fff'}}>Начать чат с клиентом</Text>
+                                    <Text style={{fontSize: 12, fontWeight: '500', color: '#fff'}}>Чат с клиентом</Text>
+                                    <Text style={{fontSize: 12, fontWeight: '400', color: '#fff'}}>Переписка в реальном времени</Text>
                                 </View>
                             </View>
                             <Image source={require("../assets/images/whiteChevronRight.png")} style={{width: 24, height: 24}} resizeMode='contain' />
                         </TouchableOpacity>
-                        {orderDetails?.step === 'toClient' && (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    router.push({
-                                        pathname: '/orderChat' as any,
-                                        params: { orderId: orderDetails._id, clientTitle: orderDetails.client?.fullName ?? '' }
-                                    });
-                                }}
-                                style={{
-                                    backgroundColor: '#3da163',
-                                    padding: 16,
-                                    borderRadius: 12,
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    flexDirection: 'row',
-                                    marginBottom: 12,
-                                }}
-                            >
-                                <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                                    <Image source={require("../assets/images/whiteComments.png")} style={{width: 24, height: 24}} resizeMode='contain' />
-                                    <View style={{marginLeft: 8}}>
-                                        <Text style={{fontSize: 12, fontWeight: '500', color: '#fff'}}>Чат с клиентом</Text>
-                                        <Text style={{fontSize: 12, fontWeight: '400', color: '#fff'}}>Переписка в реальном времени</Text>
-                                    </View>
-                                </View>
-                                <Image source={require("../assets/images/whiteChevronRight.png")} style={{width: 24, height: 24}} resizeMode='contain' />
-                            </TouchableOpacity>
-                        )}
                         {orderDetails?.step === 'toAquaMarket' ? (
                             <MyButton
                                 title="Заказ у меня"

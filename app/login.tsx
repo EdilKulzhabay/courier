@@ -11,14 +11,18 @@ const screenWidth = Dimensions.get('window').width
 const Login = () => {
     const router = useRouter();
 
+    const [loginMethod, setLoginMethod] = useState<'phone' | 'email'>('phone');
     const [email, setEmail] = useState("")
+    const [phone, setPhone] = useState("")
     const [password, setPassword] = useState("")
     const [loading, setLoading] = useState(false);
 
     const handleLogin = async () => {
         setLoading(true);
         try {
-            const response = await apiService.loginCourier({ email, password });
+            const response = await apiService.loginCourier(
+                loginMethod === 'phone' ? { phone, password } : { email, password }
+            );
             if (response.success) {
                 await saveTokenData({ token: response.token });
                 await saveCourierData({ ...response.userData });
@@ -75,28 +79,44 @@ const Login = () => {
 
             <View style={styles.contentContainer}>
                 <View>
-                    <OutlinedFilledLabelInput
-                        label="Введите почту" 
-                        keyboardType="email-address" 
-                        value={email} 
-                        onChangeText={(text) => setEmail(text)} 
-                        onRightIconPress={() => {}}
-                        autoCapitalize="none"
-                    />
+                    {loginMethod === 'phone' ? (
+                        <OutlinedFilledLabelInput
+                            label="Номер телефона"
+                            keyboardType="phone-pad"
+                            value={phone}
+                            onChangeText={(text) => setPhone(text)}
+                            mask="phone"
+                            onRightIconPress={() => {}}
+                        />
+                    ) : (
+                        <OutlinedFilledLabelInput
+                            label="Введите почту"
+                            keyboardType="email-address"
+                            value={email}
+                            onChangeText={(text) => setEmail(text)}
+                            onRightIconPress={() => {}}
+                            autoCapitalize="none"
+                        />
+                    )}
 
                     <OutlinedFilledLabelInput
-                        label="Введите пароль" 
-                        keyboardType="default" 
-                        value={password} 
-                        onChangeText={(text) => setPassword(text)} 
+                        label="Введите пароль"
+                        keyboardType="default"
+                        value={password}
+                        onChangeText={(text) => setPassword(text)}
                         onRightIconPress={() => {}}
                         isPassword={true}
                         autoCapitalize="none"
                     />
 
-                    {/* <TouchableOpacity onPress={() => {}} style={styles.forgotPassword}>
-                        <Text style={styles.forgotPasswordText}>Забыли пароль?</Text>
-                    </TouchableOpacity> */}
+                    <TouchableOpacity
+                        onPress={() => setLoginMethod(loginMethod === 'phone' ? 'email' : 'phone')}
+                        style={styles.forgotPassword}
+                    >
+                        <Text style={styles.forgotPasswordText}>
+                            {loginMethod === 'phone' ? 'Войти через почту' : 'Войти через телефон'}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
 
                 <View>

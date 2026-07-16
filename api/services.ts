@@ -219,17 +219,6 @@ export const apiService = {
         }
     },
 
-    sendNotificationToClient: async (notificationToken: string, message: string) => {
-        try {
-            const response = await api.post('/sendNotificationToClient', { notificationToken, message });
-            return response.data;
-        } catch (error: any) {
-            const message =
-                error?.response?.data?.message || 'Не удалось отправить уведомление';
-            return { success: false, message };
-        }
-    },
-
     sendOrderChatMessage: async (orderId: string, text: string) => {
         try {
             const response = await api.post('/courier/sendOrderChatMessage', { orderId, text });

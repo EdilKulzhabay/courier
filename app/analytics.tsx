@@ -1,9 +1,24 @@
 import { useFocusEffect, useRouter } from "expo-router"
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { ActivityIndicator, Alert, Image, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native"
 import { apiService } from "../api/services"
 import MyButton from "../components/MyButton"
-import { updateCourierData } from "../utils/storage"
+import { getLastWithdrawalTime, saveLastWithdrawalTime, updateCourierData } from "../utils/storage"
+
+const WITHDRAW_COOLDOWN_MS = 60 * 60 * 1000;
+
+const formatCooldownRemaining = (ms: number): string => {
+    const totalMinutes = Math.ceil(ms / 60000);
+    if (totalMinutes <= 1) {
+        return "меньше минуты";
+    }
+    if (totalMinutes < 60) {
+        return `${totalMinutes} мин`;
+    }
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return minutes > 0 ? `${hours} ч ${minutes} мин` : `${hours} ч`;
+};
 
 const Analytics = () => {
     const router = useRouter();
@@ -15,6 +30,9 @@ const Analytics = () => {
     const [withdrawLoading, setWithdrawLoading] = useState(false);
     const [cashIncome, setCashIncome] = useState(0);
     const [income, setIncome] = useState(0);
+    const [lastWithdrawalTime, setLastWithdrawalTime] = useState<number | null>(null);
+    const [isCooldownModalVisible, setIsCooldownModalVisible] = useState(false);
+    const [cooldownMessage, setCooldownMessage] = useState("");
 
     const loadAnalytics = async () => {
         setIncomeLoading(true);
@@ -57,12 +75,42 @@ const Analytics = () => {
         }, [])
     );
 
+    useEffect(() => {
+        getLastWithdrawalTime().then(setLastWithdrawalTime);
+    }, []);
+
+    const getCooldownRemainingMs = () => {
+        if (!lastWithdrawalTime) {
+            return 0;
+        }
+        return WITHDRAW_COOLDOWN_MS - (Date.now() - lastWithdrawalTime);
+    };
+
     const handleOpenWithdrawModal = () => {
+        const remainingMs = getCooldownRemainingMs();
+        if (remainingMs > 0) {
+            setCooldownMessage(
+                `Вывод средств доступен не чаще одного раза в час. Попробуйте снова через ${formatCooldownRemaining(remainingMs)}.`
+            );
+            setIsCooldownModalVisible(true);
+            return;
+        }
+
         setWithdrawAmount("");
         setIsWithdrawModalVisible(true);
     };
 
     const handleConfirmWithdraw = async () => {
+        const remainingMs = getCooldownRemainingMs();
+        if (remainingMs > 0) {
+            setIsWithdrawModalVisible(false);
+            setCooldownMessage(
+                `Вывод средств доступен не чаще одного раза в час. Попробуйте снова через ${formatCooldownRemaining(remainingMs)}.`
+            );
+            setIsCooldownModalVisible(true);
+            return;
+        }
+
         const amount = Number(withdrawAmount.trim());
 
         if (!withdrawAmount.trim() || isNaN(amount) || amount <= 0) {
@@ -80,6 +128,9 @@ const Analytics = () => {
             const res = await apiService.requestWithdrawal(amount);
 
             if (res?.success) {
+                const now = Date.now();
+                setLastWithdrawalTime(now);
+                await saveLastWithdrawalTime(now);
                 setIsWithdrawModalVisible(false);
                 setWithdrawAmount("");
                 Alert.alert("Готово", "Запрос на вывод отправлен");
@@ -301,6 +352,28 @@ const Analytics = () => {
                             width="full"
                         />
                     </View>
+                </View>
+            </View>
+        </Modal>
+
+        <Modal
+            visible={isCooldownModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setIsCooldownModalVisible(false)}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Подождите немного</Text>
+                    <Text style={styles.modalSubtitle}>
+                        {cooldownMessage}
+                    </Text>
+                    <MyButton
+                        title="Понятно"
+                        onPress={() => setIsCooldownModalVisible(false)}
+                        variant="contained"
+                        width="full"
+                    />
                 </View>
             </View>
         </Modal>

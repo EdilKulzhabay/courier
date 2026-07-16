@@ -6,6 +6,7 @@ const TOKEN_DATA_KEY = '@token_data';
 const NOTIFICATION_TOKEN_DATA_KEY = '@notification_token_data';
 const ORDER_DATA_KEY = '@order_data';
 const NEED_CALL_VISITED_ORDERS_KEY = '@need_call_visited_order_ids';
+const LAST_WITHDRAWAL_TIME_KEY = '@last_withdrawal_time';
 
 const parseStringArray = (raw: string | null): string[] => {
   if (!raw) {
@@ -184,6 +185,29 @@ export const removeNeedCallVisitedOrderId = async (orderId: string): Promise<voi
     );
   } catch (error) {
     console.error('Ошибка при удалении needCall заказа:', error);
+    throw error;
+  }
+};
+
+export const getLastWithdrawalTime = async (): Promise<number | null> => {
+  try {
+    const data = await AsyncStorage.getItem(LAST_WITHDRAWAL_TIME_KEY);
+    if (!data) {
+      return null;
+    }
+    const parsed = Number(data);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch (error) {
+    console.error('Ошибка при получении времени последнего вывода:', error);
+    return null;
+  }
+};
+
+export const saveLastWithdrawalTime = async (timestamp: number): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(LAST_WITHDRAWAL_TIME_KEY, String(timestamp));
+  } catch (error) {
+    console.error('Ошибка при сохранении времени последнего вывода:', error);
     throw error;
   }
 };

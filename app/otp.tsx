@@ -65,7 +65,7 @@ const Otp = () => {
 
         const sendInitialCode = async () => {
             try {
-                const response = await apiService.sendCode({ email: form.email });
+                const response = await apiService.sendCode({ email: form.email, phone: form.phone });
                 if (!response.success) {
                     Alert.alert('Ошибка', response.message || 'Не удалось отправить код');
                 }
@@ -75,7 +75,7 @@ const Otp = () => {
         };
 
         sendInitialCode();
-    }, [form.email]);
+    }, [form.email, form.phone]);
 
     const submitCode = async (fullCode: string) => {
         if (fullCode.length !== OTP_LENGTH || isSubmitting) {
@@ -84,7 +84,7 @@ const Otp = () => {
 
         setIsSubmitting(true);
         try {
-            const res = await apiService.codeConfirm({ email: form.email, code: fullCode });
+            const res = await apiService.codeConfirm({ phone: form.phone, code: fullCode });
             if (res.success) {
                 const response = await apiService.registerCourier(form);
                 if (response.success) {
@@ -157,7 +157,7 @@ const Otp = () => {
 
         setIsResending(true);
         try {
-            const response = await apiService.sendCode({ email: form.email });
+            const response = await apiService.sendCode({ email: form.email, phone: form.phone });
             if (response.success) {
                 setTimer(RESEND_COOLDOWN_SEC);
                 setCode(Array(OTP_LENGTH).fill(''));
@@ -198,7 +198,7 @@ const Otp = () => {
 
                 <View style={styles.content}>
                     <Text style={styles.title}>Дождитесь кода из сообщения</Text>
-                    <Text style={styles.subtitle}>Код отправлен на почту {form.email}</Text>
+                    <Text style={styles.subtitle}>Код отправлен в WhatsApp на {form.phone}</Text>
 
                     <View style={styles.codeContainer}>
                         {code.map((digit, index) => (

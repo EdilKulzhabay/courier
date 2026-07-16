@@ -1,9 +1,12 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ActivityIndicator, Alert, View, Text, TouchableOpacity, Image, ScrollView, StyleSheet, Platform, Modal, Pressable, TextInput } from "react-native";
+import { ActivityIndicator, Alert, View, Text, TouchableOpacity, Image, ScrollView, StyleSheet, Platform, Modal, Pressable, TextInput, Switch } from "react-native";
 import { apiService } from "../api/services";
 import { useEffect, useState } from "react";
 import MyButton from "@/components/MyButton";
 import { getCourierData, removeNeedCallVisitedOrderId } from "../utils/storage";
+
+const BOTTLE_SALE_PRICE_19 = 3500;
+const BOTTLE_SALE_PRICE_12 = 2500;
 
 const OrderCompletion = () => {
     const { formData } = useLocalSearchParams();
@@ -26,8 +29,13 @@ const OrderCompletion = () => {
     const [step1Loading, setStep1Loading] = useState(false);
     const [paymentModalType, setPaymentModalType] = useState<'paid' | 'unpaid' | null>(null);
     const [refreshQrLoading, setRefreshQrLoading] = useState(false);
+    const [bottleSaleEnabled, setBottleSaleEnabled] = useState(false);
 
-    const paymentAmount = price12 * count12 + price19 * count19;
+    const bottleSaleExtra = bottleSaleEnabled
+        ? Math.max(0, count19 - emptyCount19) * BOTTLE_SALE_PRICE_19 + Math.max(0, count12 - emptyCount12) * BOTTLE_SALE_PRICE_12
+        : 0;
+    const basePaymentAmount = opForm === "fakt" ? price12 * count12 + price19 * count19 : 0;
+    const paymentAmount = basePaymentAmount + bottleSaleExtra;
 
     const loadKaspiQr = async (forceRefresh = false) => {
         if (!orderId) {
@@ -87,7 +95,7 @@ const OrderCompletion = () => {
     };
 
     const handleContinueFromStep1 = async () => {
-        if (opForm === "fakt") {
+        if (opForm === "fakt" || bottleSaleExtra > 0) {
             setStep(2);
             return;
         }
@@ -106,7 +114,9 @@ const OrderCompletion = () => {
     const handleAcceptCash = async () => {
         setCashLoading(true);
         try {
-            const success = await finishOrder('fakt');
+            // Если исходная форма оплаты не "наличные" — мы здесь только из-за доплаты за бутыли,
+            // итоговая форма оплаты заказа не должна меняться.
+            const success = await finishOrder(opForm === "fakt" ? 'fakt' : opForm);
             if (success) {
                 router.replace('./main' as any);
             }
@@ -144,7 +154,8 @@ const OrderCompletion = () => {
     const handleGoToMainAfterPayment = async () => {
         setCompleteOrderLoading(true);
         try {
-            const success = await finishOrder("credit");
+            // Аналогично handleAcceptCash: opForm меняем на "qr" только если заказ изначально был "наличными".
+            const success = await finishOrder(opForm === "fakt" ? "qr" : opForm);
             if (success) {
                 setPaymentModalType(null);
                 router.replace('./main' as any);
@@ -442,9 +453,49 @@ const OrderCompletion = () => {
                             </View>
 
                             <View style={{
-                                flexDirection: 'row', 
-                                alignItems: 'center', 
-                                justifyContent: 'space-between', 
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                borderWidth: 1,
+                                borderColor: '#E3E3E3',
+                                padding: 12,
+                                borderRadius: 8,
+                                marginTop: 12,
+                            }}>
+                                <View style={{flex: 1, marginRight: 12}}>
+                                    <Text style={{fontSize: 14, fontWeight: '500', color: '#292D32'}}>Продажа бутылей</Text>
+                                </View>
+                                <Switch
+                                    value={bottleSaleEnabled}
+                                    onValueChange={setBottleSaleEnabled}
+                                    trackColor={{false: '#E3E3E3', true: '#DC1818'}}
+                                    thumbColor="#fff"
+                                />
+                            </View>
+
+                            {bottleSaleExtra > 0 && (
+                                <View style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    backgroundColor: "#FEF2F2",
+                                    padding: 12,
+                                    borderRadius: 8,
+                                    marginTop: 12,
+                                }}>
+                                    <Text style={{fontSize: 13, fontWeight: '500', color: '#DC1818'}}>
+                                        Доплата за бутыли
+                                    </Text>
+                                    <Text style={{fontSize: 15, fontWeight: '700', color: '#DC1818'}}>
+                                        {bottleSaleExtra} ₸
+                                    </Text>
+                                </View>
+                            )}
+
+                            <View style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
                                 backgroundColor: "#f4f5fa",
                                 padding: 12,
                                 borderRadius: 8,
@@ -464,7 +515,7 @@ const OrderCompletion = () => {
                             </View>
 
                             <MyButton
-                                title={opForm === "fakt" ? "Перейти к оплате" : "Завершить заказ"}
+                                title={(opForm === "fakt" || bottleSaleExtra > 0) ? "Перейти к оплате" : "Завершить заказ"}
                                 onPress={handleContinueFromStep1}
                                 variant="contained"
                                 width="full"
@@ -477,7 +528,11 @@ const OrderCompletion = () => {
                     {step === 2 && (
                         <>
                             <Text style={{fontSize: 16, fontWeight: '500', color: '#292D32'}}>Шаг 2. Оплата заказа</Text>
-                            <Text style={{fontSize: 13, fontWeight: '400', color: '#7d7d7f', marginTop: 8}}>Покажите QR-код клиенту для оплаты.</Text>
+                            <Text style={{fontSize: 13, fontWeight: '400', color: '#7d7d7f', marginTop: 8}}>
+                                {opForm === "fakt"
+                                    ? "Покажите QR-код клиенту для оплаты."
+                                    : "Покажите QR-код клиенту для оплаты доплаты за бутыли."}
+                            </Text>
 
                             <View style={styles.section}>
                                 <Text style={{fontSize: 12, fontWeight: '400', color: '#7d7d7f'}}>

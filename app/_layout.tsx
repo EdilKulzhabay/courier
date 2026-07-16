@@ -11,7 +11,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from 'expo-status-bar';
 import * as TaskManager from "expo-task-manager";
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, SafeAreaView, View } from 'react-native';
+import { Alert, Platform, SafeAreaView, View } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -98,8 +98,14 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 });
 
 export default function RootLayout() {
-    // Предотвращаем затухание экрана когда приложение открыто
-    useKeepAwake();
+    // Предотвращаем затухание экрана когда приложение открыто.
+    // На web отключено: navigator.wakeLock — асинхронный, и при быстром
+    // размонтировании (Fast Refresh, React 19 double-invoke) deactivate
+    // срывается с ERR_KEEP_AWAKE_TAG_INVALID (баг expo-keep-awake web).
+    if (Platform.OS !== 'web') {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        useKeepAwake();
+    }
     const router = useRouter();
     const segments = useSegments();
     const rootNavigationState = useRootNavigationState();
