@@ -199,9 +199,11 @@ const DeliveredBottles = () => {
                     <Text style={styles.bottlesLabel}>всего доставлено</Text>
                 </View>
 
-                <View style={styles.chartContainer}>
+                <View style={[styles.chartContainer, weekData.length === 1 && styles.chartContainerCentered]}>
                     {weekData.map((item: number, index: number) => {
-                        const barWidth = (screenWidth - 48 - padding) / weekData.length; // Ширина каждого столбца
+                        const barWidth = weekData.length === 1
+                            ? screenWidth / 8 // Один день выбран — узкий столбец по центру
+                            : (screenWidth - 48 - padding) / weekData.length; // Ширина каждого столбца
                         const barHeight = (item / (maxDeliveredBottles + 10)) * chartHeight; // Высота столбца пропорционально максимуму
                         console.log("barHeight in deliveredBottles = ", item, maxDeliveredBottles);
                         return (
@@ -338,6 +340,9 @@ const styles = StyleSheet.create({
         marginTop: 28,
         flexDirection: "row",
         height: chartHeight
+    },
+    chartContainerCentered: {
+        justifyContent: "center"
     },
     barBackground: {
         backgroundColor: "#E9ECF1",

@@ -33,6 +33,10 @@ const Analytics = () => {
     const [lastWithdrawalTime, setLastWithdrawalTime] = useState<number | null>(null);
     const [isCooldownModalVisible, setIsCooldownModalVisible] = useState(false);
     const [cooldownMessage, setCooldownMessage] = useState("");
+    const [cardData, setCardData] = useState<{ accountNumber: string; IIN: string; fullName: string } | null>(null);
+    const [isMissingCardDataModalVisible, setIsMissingCardDataModalVisible] = useState(false);
+    const [hasActiveOrder, setHasActiveOrder] = useState(false);
+    const [isActiveOrderModalVisible, setIsActiveOrderModalVisible] = useState(false);
 
     const loadAnalytics = async () => {
         setIncomeLoading(true);
@@ -46,6 +50,10 @@ const Analytics = () => {
 
             await updateCourierData(courierData.userData);
             setAvailableIncome(Number(courierData.userData.income) || 0);
+            setCardData(courierData.userData.cardData || null);
+            setHasActiveOrder(
+                !!(courierData.userData.order?.orderId || courierData.userData.order?.stopType === "aquaMarket")
+            );
         } catch {
             setAvailableIncome(0);
         } finally {
@@ -86,7 +94,21 @@ const Analytics = () => {
         return WITHDRAW_COOLDOWN_MS - (Date.now() - lastWithdrawalTime);
     };
 
+    const isCardDataFilled = () => {
+        return !!(
+            cardData &&
+            cardData.accountNumber.trim() &&
+            cardData.IIN.trim() &&
+            cardData.fullName.trim()
+        );
+    };
+
     const handleOpenWithdrawModal = () => {
+        if (hasActiveOrder) {
+            setIsActiveOrderModalVisible(true);
+            return;
+        }
+
         const remainingMs = getCooldownRemainingMs();
         if (remainingMs > 0) {
             setCooldownMessage(
@@ -96,11 +118,22 @@ const Analytics = () => {
             return;
         }
 
+        if (!isCardDataFilled()) {
+            setIsMissingCardDataModalVisible(true);
+            return;
+        }
+
         setWithdrawAmount("");
         setIsWithdrawModalVisible(true);
     };
 
     const handleConfirmWithdraw = async () => {
+        if (hasActiveOrder) {
+            setIsWithdrawModalVisible(false);
+            setIsActiveOrderModalVisible(true);
+            return;
+        }
+
         const remainingMs = getCooldownRemainingMs();
         if (remainingMs > 0) {
             setIsWithdrawModalVisible(false);
@@ -251,24 +284,30 @@ const Analytics = () => {
                 </Text>
             </View>
 
-            <TouchableOpacity 
-                style={styles.withdrawButton}
+            <TouchableOpacity
+                style={[styles.withdrawButton, hasActiveOrder && styles.withdrawButtonDisabled]}
                 onPress={handleOpenWithdrawModal}
+                disabled={hasActiveOrder}
             >
                 <View style={{flexDirection: 'row', alignItems: 'center'}}>
                     <Image
                         source={require("../assets/images/card.png")}
-                        style={{width: 20, height: 20}}
+                        style={{width: 20, height: 20, opacity: hasActiveOrder ? 0.4 : 1}}
                         resizeMode="contain"
                     />
-                    <Text style={{fontSize: 16, fontWeight: '500', color: '#FB2C36', marginLeft: 12}}>Вывести на карту</Text>
+                    <Text style={{fontSize: 16, fontWeight: '500', color: hasActiveOrder ? '#B0B0B0' : '#FB2C36', marginLeft: 12}}>Вывести на карту</Text>
                 </View>
                 <Image
                     source={require("../assets/images/redChevronRight.png")}
-                    style={{width: 20, height: 20}}
+                    style={{width: 20, height: 20, opacity: hasActiveOrder ? 0.4 : 1}}
                     resizeMode="contain"
                 />
             </TouchableOpacity>
+            {hasActiveOrder && (
+                <Text style={styles.withdrawDisabledHint}>
+                    Вывод средств недоступен во время выполнения заказа
+                </Text>
+            )}
 
             <View style={styles.analyticBlocks}>
                 <TouchableOpacity
@@ -352,6 +391,66 @@ const Analytics = () => {
                             width="full"
                         />
                     </View>
+                </View>
+            </View>
+        </Modal>
+
+        <Modal
+            visible={isMissingCardDataModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setIsMissingCardDataModalVisible(false)}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Заполните банковские реквизиты</Text>
+                    <Text style={styles.modalSubtitle}>
+                        Для вывода денежных средств необходимо заполнить банковские реквизиты в вашем профиле.{"\n\n"}
+                        Укажите:{"\n"}
+                        20-значный номер банковского счета (IBAN), начинающийся с KZ;{"\n"}
+                        ИИН получателя;{"\n"}
+                        ФИО получателя.{"\n\n"}
+                        После заполнения реквизитов функция вывода средств станет доступна.
+                    </Text>
+                    <MyButton
+                        title="Заполнить реквизиты"
+                        onPress={() => {
+                            setIsMissingCardDataModalVisible(false);
+                            router.push("./changeData" as any);
+                        }}
+                        variant="contained"
+                        width="full"
+                    />
+                    <View style={styles.modalCancelButton}>
+                        <MyButton
+                            title="Отмена"
+                            onPress={() => setIsMissingCardDataModalVisible(false)}
+                            variant="outlined"
+                            width="full"
+                        />
+                    </View>
+                </View>
+            </View>
+        </Modal>
+
+        <Modal
+            visible={isActiveOrderModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setIsActiveOrderModalVisible(false)}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Вывод недоступен</Text>
+                    <Text style={styles.modalSubtitle}>
+                        Вывод средств недоступен, пока у вас есть текущий заказ. Завершите заказ и попробуйте снова.
+                    </Text>
+                    <MyButton
+                        title="Понятно"
+                        onPress={() => setIsActiveOrderModalVisible(false)}
+                        variant="contained"
+                        width="full"
+                    />
                 </View>
             </View>
         </Modal>
@@ -459,6 +558,15 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
         elevation: 2
+    },
+    withdrawButtonDisabled: {
+        opacity: 0.6
+    },
+    withdrawDisabledHint: {
+        marginTop: 8,
+        fontSize: 12,
+        color: '#868382',
+        textAlign: 'center'
     },
     analyticBlocks: {
         flexDirection: 'row',   

@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Dimensions, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, Image, Keyboard, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import MultiSelectInput from "../components/MultiSelectInput";
 import MyButton from "../components/MyButton";
@@ -62,10 +62,21 @@ const Register = () => {
     };
 
     return (
-        <ScrollView style={styles.container}>
+        <View style={styles.container}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <Image
+                    source={require('../assets/images/arrowBack.png')}
+                    style={styles.backIcon}
+                    resizeMode="contain"
+                />
+            </TouchableOpacity>
+
+            <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <View>
             <View style={styles.bannerContainer}>
                 <Image
-                source={require('../assets/images/banner.png')} 
+                source={require('../assets/images/banner.png')}
                 style={{height: screenWidth / 1.76}}
                 resizeMode="contain"
                 />
@@ -161,12 +172,12 @@ const Register = () => {
                     isMulti={false}
                 />
 
-                <OutlinedFilledLabelInput
+                {/* <OutlinedFilledLabelInput
                     label="Пригласительный код" 
                     value={form.inviteCode} 
                     onChangeText={(text) => setForm({ ...form, inviteCode: text })} 
                     onRightIconPress={() => {}}
-                />
+                /> */}
                 
                 <View style={styles.agreementRow}>
                     <View>
@@ -209,7 +220,10 @@ const Register = () => {
                     />
                 </View>
             </View>
-        </ScrollView>
+            </View>
+            </TouchableWithoutFeedback>
+            </ScrollView>
+        </View>
     );
 };
 
@@ -219,6 +233,24 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: 'white'
+    },
+    scrollView: {
+        flex: 1,
+    },
+    backButton: {
+        position: 'absolute',
+        top: 30,
+        left: 16,
+        zIndex: 100,
+        padding: 8,
+        backgroundColor: '#EFEFEF',
+        borderRadius: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    backIcon: {
+        width: 24,
+        height: 24,
     },
     bannerContainer: {
         width: '100%',

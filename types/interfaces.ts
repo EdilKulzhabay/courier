@@ -1,12 +1,14 @@
 export interface Order {
     _id: string;
-    orderId: string;
-    products: {
+    orderId?: string;
+    stopType?: 'order' | 'aquaMarket';
+    aquaMarketId?: string;
+    products?: {
         b12: number;
         b19: number;
     };
     status: string;
-    sum: number;
+    sum?: number;
     opForm?: string;
     comment?: string;
     clientReview?: number;
@@ -19,18 +21,46 @@ export interface Order {
         lat: number;
         lon: number;
     };
-    date: string;
+    date?: string;
     aquaMarketAddress?: string;
     aquaMarketAddressLink?: string;
     aquaMarketPoints?: {
         lat: number;
         lon: number;
     };
-    step: string;
-    createdAt: string;
-    updatedAt: string;
-    income: number;
-    needCall: boolean;
+    step?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    income?: number;
+    needCall?: boolean;
+    address?: {
+        name: string;
+        actual: string;
+        link: string;
+        phone: string;
+        point: {
+            lat: number;
+            lon: number;
+        }
+    };
+    client?: {
+        fullName: string;
+        _id: string;
+        price12: number;
+        price19: number;
+    };
+    notificationToken?: string;
+}
+
+/** Заказ клиента, полученный курьером через getOrder — все клиентские поля гарантированно присутствуют. */
+export interface ClientOrderDetails extends Order {
+    orderId: string;
+    products: {
+        b12: number;
+        b19: number;
+    };
+    sum: number;
+    date: string;
     address: {
         name: string;
         actual: string;
@@ -59,6 +89,7 @@ export interface CourierData {
     availableIncome?: number;
     price12?: number;
     price19?: number;
+    latestAppVersion?: string;
     password: string;
     onTheLine: boolean;
     order?: Order;
@@ -100,6 +131,17 @@ export interface CourierData {
     updatedAt: string;
     emptyBottles12?: number;
     emptyBottles19?: number;
+    cardData?: {
+        accountNumber: string;
+        IIN: string;
+        fullName: string;
+    };
+    carData?: {
+        brand: string;
+        model: string;
+        color: string;
+        plateNumber: string;
+    };
 }
 
 export interface FinanceType {

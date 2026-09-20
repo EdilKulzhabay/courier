@@ -1,5 +1,5 @@
 import { apiService } from "@/api/services";
-import { Order } from "@/types/interfaces";
+import { ClientOrderDetails } from "@/types/interfaces";
 import { getCourierData } from "@/utils/storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -7,7 +7,7 @@ import { Animated, Dimensions, Image, Linking, Modal, PanResponder, StyleSheet, 
 import MyButton from "./MyButton";
 
 interface OrderDetailsProps {
-    order: Order;
+    order: ClientOrderDetails;
     onStepChange?: (newStatus: string) => void;
 }
 

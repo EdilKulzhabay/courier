@@ -8,7 +8,6 @@ import {
     TouchableOpacity,
     FlatList,
     TextInput,
-    KeyboardAvoidingView,
     Keyboard,
     Alert,
     Modal,
@@ -16,6 +15,7 @@ import {
     Pressable,
     Linking,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiService } from "../api/services";
 import { loadNotifications } from "@/utils/notifications";
@@ -200,7 +200,8 @@ const OrderChat = () => {
 
             <KeyboardAvoidingView
                 style={styles.content}
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                behavior="padding"
+                keyboardVerticalOffset={Platform.OS === "ios" ? 30 : 20}
             >
                 <FlatList
                     ref={flatListRef}

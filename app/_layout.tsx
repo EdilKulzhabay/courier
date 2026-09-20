@@ -1,9 +1,10 @@
 import { apiService } from '@/api/services';
+import LocationDisclosureModal from '@/components/LocationDisclosureModal';
 import OrderNotification from '@/components/OrderNotification';
 import { CourierData, Order } from '@/types/interfaces';
 import { registerForPushNotificationsAsync } from '@/utils/registerForPushNotificationsAsync';
 import { isRemotePushSupported, loadNotifications } from '@/utils/notifications';
-import { getCourierData, getTokenData, saveNotificationTokenData, updateCourierData } from '@/utils/storage';
+import { getCourierData, getLocationDisclosureAccepted, getTokenData, saveLocationDisclosureAccepted, saveNotificationTokenData, updateCourierData } from '@/utils/storage';
 import { useKeepAwake } from 'expo-keep-awake';
 import * as Location from 'expo-location';
 import { Stack, useRootNavigationState, useRouter, useSegments } from "expo-router";
@@ -14,6 +15,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Platform, SafeAreaView, View } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 const BACKGROUND_NOTIFICATION_TASK = "BACKGROUND-NOTIFICATION-TASK";
 
@@ -118,10 +120,12 @@ export default function RootLayout() {
     const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
     const [notificationPermissionGranted, setNotificationPermissionGranted] = useState(false);
     const [pushToken, setPushToken] = useState<string | null>(null);
+    const [showLocationDisclosure, setShowLocationDisclosure] = useState(false);
 
     const notificationListener = useRef<{ remove: () => void } | null>(null);
     const responseListener = useRef<{ remove: () => void } | null>(null);
     const hasInitializedAuth = useRef(false);
+    const beginLocationTrackingRef = useRef<() => Promise<void>>(async () => {});
 
     useEffect(() => {
         if (!rootNavigationState?.key || hasInitializedAuth.current) {
@@ -412,6 +416,7 @@ export default function RootLayout() {
         }
 
         const courierId = courier._id;
+        let cancelled = false;
 
         const startLocationTracking = async () => {
             console.log('🚀 Запуск отслеживания геолокации...');
@@ -448,56 +453,91 @@ export default function RootLayout() {
             }
         };
 
-        startLocationTracking();
+        // Разрешения на геолокацию запрашиваются только после того, как
+        // курьер увидел прominent-раскрытие (LocationDisclosureModal) и
+        // явно с ним согласился — иначе Google Play отклоняет сборку
+        // (Data disclosure and consent policy).
+        beginLocationTrackingRef.current = startLocationTracking;
+
+        (async () => {
+            const alreadyAccepted = await getLocationDisclosureAccepted();
+            if (cancelled) return;
+
+            if (alreadyAccepted) {
+                startLocationTracking();
+            } else {
+                setShowLocationDisclosure(true);
+            }
+        })();
 
         return () => {
+            cancelled = true;
             Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME).catch(() => {});
         };
     }, [courier?._id]);
+
+    const handleAcceptLocationDisclosure = async () => {
+        setShowLocationDisclosure(false);
+        await saveLocationDisclosureAccepted();
+        // Системный запрос разрешений должен идти сразу за согласием
+        // пользователя, без промежуточных экранов.
+        beginLocationTrackingRef.current();
+    };
+
+    const handleDeclineLocationDisclosure = () => {
+        setShowLocationDisclosure(false);
+    };
 
     if (!rootNavigationState?.key || !isInitialized) {
         return null;
     }
 
     return (
-        <SafeAreaView style={{flex: 1}}>
-            <SafeAreaProvider>
-                <Stack screenOptions={{ headerShown: false, gestureEnabled: false }}>
-                    <Stack.Screen name="start" />
-                    <Stack.Screen name="login" />
-                    <Stack.Screen name="register" />
-                    <Stack.Screen name="otp" />
-                    <Stack.Screen name="registerAccepted" />
+        <KeyboardProvider>
+            <SafeAreaView style={{flex: 1}}>
+                <SafeAreaProvider>
+                    <Stack screenOptions={{ headerShown: false, gestureEnabled: false }}>
+                        <Stack.Screen name="start" />
+                        <Stack.Screen name="login" />
+                        <Stack.Screen name="register" />
+                        <Stack.Screen name="otp" />
+                        <Stack.Screen name="registerAccepted" />
 
-                    <Stack.Screen name="main" />
-                    <Stack.Screen name="orderStatus" />
-                    <Stack.Screen name="success" />
-                    <Stack.Screen name="cancelled" />
-                    <Stack.Screen name="cancelledReason" />
-                    <Stack.Screen name="changeOrderBottles" />
+                        <Stack.Screen name="main" />
+                        <Stack.Screen name="orderStatus" />
+                        <Stack.Screen name="success" />
+                        <Stack.Screen name="cancelled" />
+                        <Stack.Screen name="cancelledReason" />
+                        <Stack.Screen name="changeOrderBottles" />
 
-                    <Stack.Screen name="settings" />
-                    <Stack.Screen name="changeData" />
-                    <Stack.Screen name="analytics" />
-                    
-                    <Stack.Screen name="deliveredBottles" />
-                    <Stack.Screen name="history" />
-                    <Stack.Screen name="orderHistoryData" />
-                    <Stack.Screen name="finance" />
-                </Stack>
-                <StatusBar style="auto" />
-                {currentOrder && (
-                    <OrderNotification
-                        isVisible={showNotification}
-                        onAccept={handleAcceptOrder}
-                        onDecline={handleDeclineOrder}
-                        hideNotification={hideNotification}
-                        isAccepted={isOrderAccepted}
-                        order={currentOrder}
+                        <Stack.Screen name="settings" />
+                        <Stack.Screen name="changeData" />
+                        <Stack.Screen name="analytics" />
+
+                        <Stack.Screen name="deliveredBottles" />
+                        <Stack.Screen name="history" />
+                        <Stack.Screen name="orderHistoryData" />
+                        <Stack.Screen name="finance" />
+                    </Stack>
+                    <StatusBar style="auto" />
+                    <LocationDisclosureModal
+                        visible={showLocationDisclosure}
+                        onAccept={handleAcceptLocationDisclosure}
+                        onDecline={handleDeclineLocationDisclosure}
                     />
-                )}
-            </SafeAreaProvider>
-            <View style={{height: 30}}></View>
-        </SafeAreaView>
+                    {currentOrder && (
+                        <OrderNotification
+                            isVisible={showNotification}
+                            onAccept={handleAcceptOrder}
+                            onDecline={handleDeclineOrder}
+                            hideNotification={hideNotification}
+                            isAccepted={isOrderAccepted}
+                            order={currentOrder}
+                        />
+                    )}
+                </SafeAreaProvider>
+                <View style={{height: 30}}></View>
+            </SafeAreaView>
+        </KeyboardProvider>
     )
 }

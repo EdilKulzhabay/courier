@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router"
 import { useEffect, useState } from "react"
-import { Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import { Alert, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import DateTimePickerModal from "react-native-modal-datetime-picker"
 import { apiService } from "../api/services"
 import MultiSelectInput from "../components/MultiSelectInput"
@@ -17,6 +18,21 @@ const ChangeData = () => {
     const [courier, setCourier] = useState<CourierData | null>(null);
 
     const [loading, setLoading] = useState(false);
+
+    const [cardDataForm, setCardDataForm] = useState({
+        accountNumber: "",
+        IIN: "",
+        fullName: "",
+    });
+    const [cardDataLoading, setCardDataLoading] = useState(false);
+
+    const [carDataForm, setCarDataForm] = useState({
+        brand: "",
+        model: "",
+        color: "",
+        plateNumber: "",
+    });
+    const [carDataLoading, setCarDataLoading] = useState(false);
 
     const fetchCourierData = async () => {
         const courierData = await apiService.getData();
@@ -70,8 +86,87 @@ const ChangeData = () => {
                 country: courier.country || "",
                 city: courier.city || "",
             });
+            setCardDataForm({
+                accountNumber: courier.cardData?.accountNumber || "",
+                IIN: courier.cardData?.IIN || "",
+                fullName: courier.cardData?.fullName || "",
+            });
+            setCarDataForm({
+                brand: courier.carData?.brand || "",
+                model: courier.carData?.model || "",
+                color: courier.carData?.color || "",
+                plateNumber: courier.carData?.plateNumber || "",
+            });
         }
     }, [courier]);
+
+    const saveCardData = async () => {
+        const accountNumber = cardDataForm.accountNumber.trim().toUpperCase();
+        const IIN = cardDataForm.IIN.trim();
+        const fullName = cardDataForm.fullName.trim();
+
+        if (!accountNumber || !IIN || !fullName) {
+            Alert.alert("Ошибка", "Заполните все поля банковских реквизитов");
+            return;
+        }
+
+        Alert.alert(
+            "Проверьте данные",
+            "Убедитесь, что банковские реквизиты введены правильно",
+            [
+                { text: "Отмена", style: "cancel" },
+                { text: "Сохранить", onPress: () => submitCardData(accountNumber, IIN, fullName) },
+            ]
+        );
+    };
+
+    const submitCardData = async (accountNumber: string, IIN: string, fullName: string) => {
+        setCardDataLoading(true);
+        try {
+            const data = { accountNumber, IIN, fullName };
+            const res = await apiService.updateData(courier?._id || "", "cardData", data);
+            if (res.success) {
+                setCardDataForm(data);
+                setCourier((prev) => (prev ? { ...prev, cardData: data } : prev));
+                Alert.alert("Готово", "Банковские реквизиты сохранены");
+            } else {
+                Alert.alert("Ошибка", res.message || "Не удалось сохранить реквизиты");
+            }
+        } catch {
+            Alert.alert("Ошибка", "Не удалось сохранить реквизиты");
+        } finally {
+            setCardDataLoading(false);
+        }
+    };
+
+    const saveCarData = async () => {
+        const brand = carDataForm.brand.trim();
+        const model = carDataForm.model.trim();
+        const color = carDataForm.color.trim();
+        const plateNumber = carDataForm.plateNumber.trim().toUpperCase();
+
+        if (!brand || !model || !color || !plateNumber) {
+            Alert.alert("Ошибка", "Заполните все поля данных машины");
+            return;
+        }
+
+        setCarDataLoading(true);
+        try {
+            const data = { brand, model, color, plateNumber };
+            const res = await apiService.updateData(courier?._id || "", "carData", data);
+            if (res.success) {
+                setCarDataForm(data);
+                setCourier((prev) => (prev ? { ...prev, carData: data } : prev));
+                Alert.alert("Готово", "Данные машины сохранены");
+            } else {
+                Alert.alert("Ошибка", res.message || "Не удалось сохранить данные машины");
+            }
+        } catch {
+            Alert.alert("Ошибка", "Не удалось сохранить данные машины");
+        } finally {
+            setCarDataLoading(false);
+        }
+    };
 
     const handleConfirm = (date: Date) => {
         const formatted = date.toISOString().slice(0, 10); // формат ГГГГ-ММ-ДД
@@ -106,7 +201,10 @@ const ChangeData = () => {
             <Text style={styles.headerTitle}>Изменить данные</Text>
         </View>
 
-        <ScrollView style={styles.formContainer}>
+        <KeyboardAwareScrollView
+            style={styles.formContainer}
+            bottomOffset={24}
+        >
             <OutlinedFilledLabelInput
                 label="Имя (как в удостоверении)"
                 value={form.firstName}
@@ -197,7 +295,89 @@ const ChangeData = () => {
                     loading={loading}
                 />
             </View>
-        </ScrollView>
+
+            <Text style={styles.sectionTitle}>Банковские реквизиты</Text>
+            <Text style={styles.sectionSubtitle}>
+                Нужны для вывода средств. Номер счета (IBAN) — 20 символов, начинается с KZ.
+            </Text>
+
+            <OutlinedFilledLabelInput
+                label="Номер счета (IBAN)"
+                value={cardDataForm.accountNumber}
+                onChangeText={(text) => setCardDataForm({ ...cardDataForm, accountNumber: text.toUpperCase() })}
+                autoCapitalize="characters"
+                maxLength={20}
+                onRightIconPress={() => {}}
+            />
+
+            <OutlinedFilledLabelInput
+                label="ИИН получателя"
+                value={cardDataForm.IIN}
+                onChangeText={(text) => setCardDataForm({ ...cardDataForm, IIN: text.replace(/\D/g, "") })}
+                keyboardType="numeric"
+                maxLength={12}
+                onRightIconPress={() => {}}
+            />
+
+            <OutlinedFilledLabelInput
+                label="ФИО получателя"
+                value={cardDataForm.fullName}
+                onChangeText={(text) => setCardDataForm({ ...cardDataForm, fullName: text })}
+                onRightIconPress={() => {}}
+            />
+
+            <View style={styles.buttonContainer}>
+                <MyButton
+                    title="Сохранить реквизиты"
+                    onPress={saveCardData}
+                    variant="contained"
+                    loading={cardDataLoading}
+                />
+            </View>
+
+            <Text style={styles.sectionTitle}>Данные машины</Text>
+            <Text style={styles.sectionSubtitle}>
+                Нужны для получения заказов.
+            </Text>
+
+            <OutlinedFilledLabelInput
+                label="Марка машины"
+                value={carDataForm.brand}
+                onChangeText={(text) => setCarDataForm({ ...carDataForm, brand: text })}
+                onRightIconPress={() => {}}
+            />
+
+            <OutlinedFilledLabelInput
+                label="Модель машины"
+                value={carDataForm.model}
+                onChangeText={(text) => setCarDataForm({ ...carDataForm, model: text })}
+                onRightIconPress={() => {}}
+            />
+
+            <OutlinedFilledLabelInput
+                label="Цвет машины"
+                value={carDataForm.color}
+                onChangeText={(text) => setCarDataForm({ ...carDataForm, color: text })}
+                onRightIconPress={() => {}}
+            />
+
+            <OutlinedFilledLabelInput
+                label="Гос. номер машины"
+                value={carDataForm.plateNumber}
+                onChangeText={(text) => setCarDataForm({ ...carDataForm, plateNumber: text.toUpperCase() })}
+                autoCapitalize="characters"
+                onRightIconPress={() => {}}
+            />
+
+            <View style={styles.buttonContainer}>
+                <MyButton
+                    title="Сохранить данные машины"
+                    onPress={saveCarData}
+                    variant="contained"
+                    loading={carDataLoading}
+                />
+            </View>
+        </KeyboardAwareScrollView>
     </View>
 }
 
@@ -243,6 +423,18 @@ const styles = StyleSheet.create({
     buttonContainer: {
         paddingTop: 12,
         paddingBottom: 56
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#292D32',
+        marginTop: 8
+    },
+    sectionSubtitle: {
+        fontSize: 13,
+        color: '#868382',
+        marginTop: 4,
+        marginBottom: 8
     }
 });
 

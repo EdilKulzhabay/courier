@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // import OrderDetails from '../components/OrderDetails';
+import FullscreenImageViewer from '@/components/FullscreenImageViewer';
 import MyButton from '@/components/MyButton';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { apiService } from '../api/services';
-import { CourierData, Order } from '../types/interfaces';
+import { ClientOrderDetails, CourierData } from '../types/interfaces';
 import { addNeedCallVisitedOrderId, hasNeedCallVisitedOrderId } from '../utils/storage';
 
 const API_ORIGIN = "https://api.tibetskayacrm.kz";
@@ -17,13 +18,13 @@ const getImageUrl = (url: string) => {
 
 const OrderStatus = () => {
     const router = useRouter();
-    const [orderDetails, setOrderDetails] = useState<Order | null>(null);
+    const [orderDetails, setOrderDetails] = useState<ClientOrderDetails | null>(null);
     const [courier, setCourier] = useState<CourierData | null>(null);
     const [isPhoneModalVisible, setIsPhoneModalVisible] = useState(false);
     const [orderId, setOrderId] = useState<string>("");
     const [currentPhone, setCurrentPhone] = useState<string[]>([]);
     const [addressImages, setAddressImages] = useState<string[]>([]);
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
     const [communicationMethod, setCommunicationMethod] = useState<string>("phone");
 
     // Функция для разделения номеров телефона
@@ -63,20 +64,20 @@ const OrderStatus = () => {
         setAddressImages(Array.isArray(currentAddress?.images) ? currentAddress.images : []);
         setOrderDetails(details);
 
-        if (details.needCall && details._id) {
-            const alreadyVisited = await hasNeedCallVisitedOrderId(details._id);
-            if (!alreadyVisited) {
-                await addNeedCallVisitedOrderId(details._id);
-                router.push({
-                    pathname: '/orderChat' as any,
-                    params: {
-                        orderId: details._id,
-                        clientTitle: details.client?.fullName ?? '',
-                        currentPhone: JSON.stringify(phones),
-                    },
-                });
-            }
-        }
+        // if (details.needCall && details._id) {
+        //     const alreadyVisited = await hasNeedCallVisitedOrderId(details._id);
+        //     if (!alreadyVisited) {
+        //         await addNeedCallVisitedOrderId(details._id);
+        //         router.push({
+        //             pathname: '/orderChat' as any,
+        //             params: {
+        //                 orderId: details._id,
+        //                 clientTitle: details.client?.fullName ?? '',
+        //                 currentPhone: JSON.stringify(phones),
+        //             },
+        //         });
+        //     }
+        // }
     };
 
     const fetchCourierData = async () => {
@@ -146,46 +147,43 @@ const OrderStatus = () => {
                     />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Статус заказа</Text>
+                <View style={{backgroundColor: "#FEF2F2", borderRadius: 100, padding: 8, marginLeft: "auto"}}>
+                    <Image source={require("../assets/images/dollar.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                </View>
+                <View style={{marginLeft: 8}}>
+                    <Text style={{fontSize: 12, fontWeight: '400', color: '#6A7282'}}>Ваш заработок</Text>
+                    <Text style={{fontSize: 14, fontWeight: '500'}}>
+                        {orderDetails.products.b12 * (courier?.price12 || 0) + orderDetails.products.b19 * (courier?.price19 || 0)} ₸
+                    </Text>
+                </View>
             </View>
 
             <View style={styles.content}>
                 <ScrollView style={styles.scrollView}>
 
-                    <View style={{backgroundColor: '#f9f9fb', paddingVertical: 12, paddingHorizontal: 8, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-                        <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
-                            <View style={{backgroundColor: "#FEF2F2", borderRadius: 100, padding: 8}}>
-                                <Image source={require("../assets/images/dollar.png")} style={{width: 24, height: 24}} resizeMode='contain' />
-                            </View>
-                            <View>
-                                <Text style={{fontSize: 12, fontWeight: '400', color: '#6A7282'}}>Ваш заработок</Text>
-                                <Text style={{fontSize: 14, fontWeight: '500'}}>
-                                    {orderDetails.products.b12 * (courier?.price12 || 0) + orderDetails.products.b19 * (courier?.price19 || 0)} ₸
-                                </Text>
-                            </View>
-                        </View>
-                        <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
-                            <View>
-                                <Text style={{fontSize: 12, fontWeight: '400', color: '#6A7282'}}>Форма оплаты</Text>
-                                <Text style={{fontSize: 14, fontWeight: '500'}}>
-                                    {orderDetails?.opForm === "fakt" ? "Нал/Карта/QR" : orderDetails?.opForm === "credit" ? "Карта" : orderDetails?.opForm === "coupon" ? "Талоны" : orderDetails?.opForm === "postpay" ? "Постоплата" : orderDetails?.opForm === "mixed" ? "Смешанная" : orderDetails?.opForm === "qr" ? "QR" : ""}
-                                </Text>
-                            </View>
-                            <View style={{backgroundColor: "#FEF2F2", borderRadius: 100, padding: 8}}>
-                                {orderDetails?.opForm === "fakt" ? (
-                                    <Image source={require("../assets/images/cash.png")} style={{width: 24, height: 24}} resizeMode='contain' />
-                                ) : orderDetails?.opForm === "credit" ? (
-                                    <Image source={require("../assets/images/card.png")} style={{width: 24, height: 24}} resizeMode='contain' />
-                                ) : orderDetails?.opForm === "coupon" ? (
-                                    <Image source={require("../assets/images/coupon.png")} style={{width: 24, height: 24}} resizeMode='contain' />
-                                ) : orderDetails?.opForm === "postpay" ? (
-                                    <Image source={require("../assets/images/card.png")} style={{width: 24, height: 24}} resizeMode='contain' />
-                                ) : orderDetails?.opForm === "qr" ? (
-                                    <Image source={require("../assets/images/card.png")} style={{width: 24, height: 24}} resizeMode='contain' />
-                                ) : ""}
-                            </View>
-                            
-                        </View>
+                    <View style={{backgroundColor: orderDetails?.opForm === "fakt" ? "#fdf3e9" : "#eff9ee", paddingVertical: 12, paddingHorizontal: 8, borderRadius: 8, flexDirection: 'row', columnGap: 12, alignItems: 'center'}}>
 
+                        {orderDetails?.opForm === "fakt" ? (
+                            <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, backgroundColor: "#ffe6c4", borderRadius: 100}}>
+                                <Image source={require("../assets/images/orangeWallet.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                            </View>
+                        ) : (
+                            <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, backgroundColor: "#48b957", borderRadius: 100}}>
+                                <Image source={require("../assets/images/whiteCheck.png")} style={{width: 24, height: 24}} resizeMode='contain' />
+                            </View>
+                        )}
+
+                        {orderDetails?.opForm === "fakt" ? (
+                            <View>
+                                <Text style={{fontSize: 14, fontWeight: '500', color: '#000'}}>Оплата заказа по факту доставки</Text>
+                                <Text style={{fontSize: 12, color: "#000"}}>Клиент оплачивает при получении</Text>
+                            </View>
+                        ) : (
+                            <View>
+                                <Text style={{fontSize: 14, fontWeight: '500', color: '#000'}}>Заказ оплачен</Text>
+                                <Text style={{fontSize: 12, color: "#000"}}>Оплата уже получена, принимать деньги{'\n'}от клиента не нужно</Text>
+                            </View>
+                        )}
                     </View>
 
                     <View style={styles.section}>
@@ -319,7 +317,7 @@ const OrderStatus = () => {
                                             borderColor: '#E5E5EA',
                                             backgroundColor: '#fafbfc',
                                         }}
-                                        onPress={() => setSelectedImage(getImageUrl(imgUrl))}
+                                        onPress={() => setSelectedImageIndex(idx)}
                                     >
                                         <Image
                                             source={{ uri: getImageUrl(imgUrl) }}
@@ -356,7 +354,7 @@ const OrderStatus = () => {
                                 });
                             }}
                             style={{
-                                backgroundColor: '#3da163',
+                                backgroundColor: '#18376e',
                                 padding: 16,
                                 borderRadius: 12,
                                 alignItems: 'center',
@@ -466,22 +464,12 @@ const OrderStatus = () => {
                 </View>
             </Modal>
 
-            <Modal
-                visible={!!selectedImage}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setSelectedImage(null)}
-            >
-                <Pressable style={styles.fullImageOverlay} onPress={() => setSelectedImage(null)}>
-                    {selectedImage ? (
-                        <Image
-                            source={{ uri: selectedImage }}
-                            style={styles.fullImage}
-                            resizeMode="contain"
-                        />
-                    ) : null}
-                </Pressable>
-            </Modal>
+            <FullscreenImageViewer
+                images={addressImages.map((imgUrl) => ({ uri: getImageUrl(imgUrl) }))}
+                imageIndex={selectedImageIndex ?? 0}
+                visible={selectedImageIndex !== null}
+                onRequestClose={() => setSelectedImageIndex(null)}
+            />
         </View>
     );
 };
@@ -777,17 +765,6 @@ const styles = StyleSheet.create({
         color: '#545454',
         textAlign: 'center',
         marginBottom: 16,
-    },
-    fullImageOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 16,
-    },
-    fullImage: {
-        width: '100%',
-        height: '80%',
     },
 });
 

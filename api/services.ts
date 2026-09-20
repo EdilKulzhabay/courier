@@ -133,6 +133,16 @@ export const apiService = {
         }
     },
 
+    getRating: async () => {
+        try {
+            const response = await api.get('/getCourierAggregatorRating');
+            return response.data;
+        } catch (error: any) {
+            const message = error?.response?.data?.message || 'Не удалось получить рейтинг';
+            return { success: false, message };
+        }
+    },
+
     getAvailableIncome: async () => {
         try {
             const response = await api.get('/getCourierAggregatorAvailableIncome');

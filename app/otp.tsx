@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -69,8 +70,9 @@ const Otp = () => {
                 if (!response.success) {
                     Alert.alert('Ошибка', response.message || 'Не удалось отправить код');
                 }
-            } catch {
-                Alert.alert('Ошибка', 'Не удалось отправить код');
+            } catch (error) {
+                const message = isAxiosError(error) ? error.response?.data?.message : undefined;
+                Alert.alert('Ошибка', message || 'Не удалось отправить код2');
             }
         };
 

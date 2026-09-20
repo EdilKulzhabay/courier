@@ -14,8 +14,8 @@ const OrderCompletion = () => {
     const [step, setStep] = useState<number>(1);
     const [count12, setCount12] = useState<number>(0);
     const [count19, setCount19] = useState<number>(0);
-    const [emptyCount12, setEmptyCount12] = useState<number>(0);
-    const [emptyCount19, setEmptyCount19] = useState<number>(0);
+    const [emptyCount12, setEmptyCount12] = useState<number | null>(null);
+    const [emptyCount19, setEmptyCount19] = useState<number | null>(null);
     const [price12, setPrice12] = useState<number>(0);
     const [price19, setPrice19] = useState<number>(0);
     const [opForm, setOpForm] = useState<string>("");
@@ -30,12 +30,17 @@ const OrderCompletion = () => {
     const [paymentModalType, setPaymentModalType] = useState<'paid' | 'unpaid' | null>(null);
     const [refreshQrLoading, setRefreshQrLoading] = useState(false);
     const [bottleSaleEnabled, setBottleSaleEnabled] = useState(false);
+    const [isPaymentMethodSheetVisible, setIsPaymentMethodSheetVisible] = useState(false);
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'qr'>('cash');
 
     const bottleSaleExtra = bottleSaleEnabled
-        ? Math.max(0, count19 - emptyCount19) * BOTTLE_SALE_PRICE_19 + Math.max(0, count12 - emptyCount12) * BOTTLE_SALE_PRICE_12
+        ? Math.max(0, count19 - (emptyCount19 ?? 0)) * BOTTLE_SALE_PRICE_19 + Math.max(0, count12 - (emptyCount12 ?? 0)) * BOTTLE_SALE_PRICE_12
         : 0;
     const basePaymentAmount = opForm === "fakt" ? price12 * count12 + price19 * count19 : 0;
     const paymentAmount = basePaymentAmount + bottleSaleExtra;
+    const isEmptyCountMissing =
+        (products?.b12 > 0 && emptyCount12 === null) ||
+        (products?.b19 > 0 && emptyCount19 === null);
 
     const loadKaspiQr = async (forceRefresh = false) => {
         if (!orderId) {
@@ -75,26 +80,37 @@ const OrderCompletion = () => {
             return false;
         }
 
-        const res = await apiService.completeOrder(
-            orderId,
-            courier._id,
-            count12,
-            count19,
-            emptyCount12,
-            emptyCount19,
-            paymentOpForm,
-        );
+        try {
+            const res = await apiService.completeOrder(
+                orderId,
+                courier._id,
+                count12,
+                count19,
+                emptyCount12 ?? 0,
+                emptyCount19 ?? 0,
+                paymentOpForm,
+            );
 
-        if (!res.success) {
-            Alert.alert('Ошибка', res.message || 'Не удалось завершить заказ');
+            if (!res.success) {
+                Alert.alert('Ошибка', res.message || 'Не удалось завершить заказ');
+                return false;
+            }
+
+            await removeNeedCallVisitedOrderId(orderId);
+            return true;
+        } catch {
+            // Обрыв интернета/таймаут: сервер сам защищён от повторного начисления
+            // (идемпотентная проверка по orderId), поэтому безопасно предложить повторить попытку.
+            Alert.alert('Ошибка', 'Не удалось завершить заказ. Проверьте подключение к интернету и попробуйте снова.');
             return false;
         }
-
-        await removeNeedCallVisitedOrderId(orderId);
-        return true;
     };
 
     const handleContinueFromStep1 = async () => {
+        if (isEmptyCountMissing) {
+            return;
+        }
+
         if (opForm === "fakt" || bottleSaleExtra > 0) {
             setStep(2);
             return;
@@ -114,15 +130,21 @@ const OrderCompletion = () => {
     const handleAcceptCash = async () => {
         setCashLoading(true);
         try {
-            // Если исходная форма оплаты не "наличные" — мы здесь только из-за доплаты за бутыли,
-            // итоговая форма оплаты заказа не должна меняться.
-            const success = await finishOrder(opForm === "fakt" ? 'fakt' : opForm);
+            // Курьер явно подтвердил оплату наличными — форма оплаты заказа всегда становится "fakt".
+            const success = await finishOrder('fakt');
             if (success) {
                 router.replace('./main' as any);
             }
         } finally {
             setCashLoading(false);
         }
+    };
+
+    const handleConfirmPaymentMethodChange = async () => {
+        if (selectedPaymentMethod === 'cash') {
+            await handleAcceptCash();
+        }
+        setIsPaymentMethodSheetVisible(false);
     };
 
     const handleCheckPayment = async () => {
@@ -182,8 +204,8 @@ const OrderCompletion = () => {
         console.log("formDataParsed = ", formDataParsed);
         setCount12(formDataParsed?.products?.b12 ? formDataParsed?.products?.b12 : 0);
         setCount19(formDataParsed?.products?.b19 ? formDataParsed?.products?.b19 : 0);
-        setEmptyCount12(formDataParsed?.products?.b12 ? formDataParsed?.products?.b12 : 0);
-        setEmptyCount19(formDataParsed?.products?.b19 ? formDataParsed?.products?.b19 : 0);
+        setEmptyCount12(null);
+        setEmptyCount19(null);
         setPrice12(formDataParsed?.price12 ? formDataParsed?.price12 : 0);
         setPrice19(formDataParsed?.price19 ? formDataParsed?.price19 : 0);
         setOpForm(formDataParsed?.opForm ? formDataParsed?.opForm : "");
@@ -380,30 +402,41 @@ const OrderCompletion = () => {
                                                 <Text style={{fontSize: 14, fontWeight: '500', color: '#292D32', marginLeft: 8}}>12л</Text>
                                             </View>
                                             <View style={{flexDirection: 'row', alignItems: 'center', gap: 24}}>
-                                                <TouchableOpacity 
+                                                <TouchableOpacity
                                                     onPress={() => {
-                                                        if (emptyCount12 > 0) {
+                                                        if (emptyCount12 !== null && emptyCount12 > 0) {
                                                             setEmptyCount12(emptyCount12 - 1);
                                                         }
                                                     }}
-                                                    disabled={emptyCount12 === 0}
+                                                    disabled={emptyCount12 === null || emptyCount12 === 0}
                                                     style={{padding: 8, borderRadius: 100, backgroundColor: '#E3E3E3'}}
                                                 >
                                                     <Image source={require("../assets/images/minus.png")} style={{width: 20, height: 20}} resizeMode='contain' />
                                                 </TouchableOpacity>
-                                                <TextInput 
-                                                    value={emptyCount12.toString()}
-                                                    onChangeText={(text) => setEmptyCount12(parseInt(text))}
-                                                    style={{width: 40, textAlign: 'center', fontSize: 14, fontWeight: '500', color: '#292D32'}} 
+                                                <TextInput
+                                                    value={emptyCount12 === null ? '-' : emptyCount12.toString()}
+                                                    onChangeText={(text) => {
+                                                        if (text.trim() === '') {
+                                                            setEmptyCount12(null);
+                                                            return;
+                                                        }
+                                                        const parsed = parseInt(text, 10);
+                                                        if (!isNaN(parsed)) {
+                                                            setEmptyCount12(Math.max(0, Math.min(parsed, products?.b12 ?? 0)));
+                                                        }
+                                                    }}
+                                                    style={{width: 40, textAlign: 'center', fontSize: 14, fontWeight: '500', color: '#292D32'}}
                                                 />
-                                                <TouchableOpacity 
+                                                <TouchableOpacity
                                                     onPress={() => {
-                                                        if (emptyCount12 < products?.b12) {
+                                                        if (emptyCount12 === null) {
+                                                            setEmptyCount12(0);
+                                                        } else if (emptyCount12 < (products?.b12 ?? 0)) {
                                                             setEmptyCount12(emptyCount12 + 1);
                                                         }
                                                     }}
-                                                    disabled={emptyCount12 === products?.b12}
-                                                    style={{padding: 8, borderRadius: 100, backgroundColor: emptyCount12 === products?.b12 ? '#E3E3E3' : '#DC1818'}}
+                                                    disabled={emptyCount12 !== null && emptyCount12 === products?.b12}
+                                                    style={{padding: 8, borderRadius: 100, backgroundColor: (emptyCount12 !== null && emptyCount12 === products?.b12) ? '#E3E3E3' : '#DC1818'}}
                                                 >
                                                     <Image source={require("../assets/images/plus.png")} style={{width: 20, height: 20}} resizeMode='contain' />
                                                 </TouchableOpacity>
@@ -420,30 +453,41 @@ const OrderCompletion = () => {
                                             <Text style={{fontSize: 14, fontWeight: '500', color: '#292D32', marginLeft: 8}}>19л</Text>
                                         </View>
                                         <View style={{flexDirection: 'row', alignItems: 'center', gap: 24}}>
-                                            <TouchableOpacity 
+                                            <TouchableOpacity
                                                 onPress={() => {
-                                                    if (emptyCount19 > 0) {
+                                                    if (emptyCount19 !== null && emptyCount19 > 0) {
                                                         setEmptyCount19(emptyCount19 - 1);
                                                     }
                                                 }}
-                                                disabled={emptyCount19 === 0}
+                                                disabled={emptyCount19 === null || emptyCount19 === 0}
                                                 style={{padding: 8, borderRadius: 100, backgroundColor: "#E3E3E3"}}
                                             >
                                                 <Image source={require("../assets/images/minus.png")} style={{width: 20, height: 20}} resizeMode='contain' />
                                             </TouchableOpacity>
-                                            <TextInput 
-                                                value={emptyCount19.toString()}
-                                                onChangeText={(text) => setEmptyCount19(parseInt(text))}
-                                                style={{width: 40, textAlign: 'center', fontSize: 14, fontWeight: '500', color: '#292D32'}} 
+                                            <TextInput
+                                                value={emptyCount19 === null ? '-' : emptyCount19.toString()}
+                                                onChangeText={(text) => {
+                                                    if (text.trim() === '') {
+                                                        setEmptyCount19(null);
+                                                        return;
+                                                    }
+                                                    const parsed = parseInt(text, 10);
+                                                    if (!isNaN(parsed)) {
+                                                        setEmptyCount19(Math.max(0, Math.min(parsed, products?.b19 ?? 0)));
+                                                    }
+                                                }}
+                                                style={{width: 40, textAlign: 'center', fontSize: 14, fontWeight: '500', color: '#292D32'}}
                                             />
-                                            <TouchableOpacity 
+                                            <TouchableOpacity
                                                 onPress={() => {
-                                                    if (emptyCount19 < products?.b19) {
+                                                    if (emptyCount19 === null) {
+                                                        setEmptyCount19(0);
+                                                    } else if (emptyCount19 < (products?.b19 ?? 0)) {
                                                         setEmptyCount19(emptyCount19 + 1);
                                                     }
                                                 }}
-                                                disabled={emptyCount19 === products?.b19}
-                                                style={{padding: 8, borderRadius: 100, backgroundColor: emptyCount19 === products?.b19 ? '#E3E3E3' : '#DC1818'}}
+                                                disabled={emptyCount19 !== null && emptyCount19 === products?.b19}
+                                                style={{padding: 8, borderRadius: 100, backgroundColor: (emptyCount19 !== null && emptyCount19 === products?.b19) ? '#E3E3E3' : '#DC1818'}}
                                             >
                                                 <Image source={require("../assets/images/plus.png")} style={{width: 20, height: 20}} resizeMode='contain' />
                                             </TouchableOpacity>
@@ -520,6 +564,7 @@ const OrderCompletion = () => {
                                 variant="contained"
                                 width="full"
                                 loading={step1Loading}
+                                disabled={isEmptyCountMissing}
                             />
                             <View style={{height: 30}} />
                         </>
@@ -569,9 +614,59 @@ const OrderCompletion = () => {
                                         QR-код действителен 10 минут.
                                     </Text>
                                 </View>
+
+                                <TouchableOpacity
+                                    onPress={handleCheckPayment}
+                                    disabled={cashLoading || checkPaymentLoading || completeOrderLoading}
+                                    style={{
+                                        padding: 12,
+                                        borderRadius: 8,
+                                        backgroundColor: '#DC1818',
+                                        marginTop: 12,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 4,
+                                        width: "80%",
+                                        opacity: checkPaymentLoading ? 0.7 : 1,
+                                    }}
+                                >
+                                    {checkPaymentLoading ? (
+                                        <ActivityIndicator size="small" color="#fff" />
+                                    ) : (
+                                        <Image source={require("../assets/images/verified.png")} style={{width: 20, height: 20}} resizeMode='contain' />
+                                    )}
+                                    <Text style={{fontSize: 14, fontWeight: '400', color: '#fff'}}>
+                                        Проверить оплату
+                                    </Text>
+                                </TouchableOpacity>
                             </View>
 
                             <TouchableOpacity
+                                onPress={() => {
+                                    setSelectedPaymentMethod('cash');
+                                    setIsPaymentMethodSheetVisible(true);
+                                }}
+                                disabled={cashLoading || checkPaymentLoading || completeOrderLoading}
+                                style={{
+                                    padding: 12,
+                                    borderRadius: 8,
+                                    borderWidth: 1,
+                                    borderColor: '#DC1818',
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 4,
+                                    opacity: cashLoading ? 0.7 : 1,
+                                }}
+                            >
+                                <Image source={require("../assets/images/change.png")} style={{width: 20, height: 20}} resizeMode='contain' />
+                                <Text style={{fontSize: 14, fontWeight: '500', color: '#DC1818'}}>
+                                    Изменить способ оплаты
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* <TouchableOpacity
                                 onPress={handleAcceptCash}
                                 disabled={cashLoading || checkPaymentLoading || completeOrderLoading}
                                 style={{
@@ -594,31 +689,8 @@ const OrderCompletion = () => {
                                 <Text style={{fontSize: 14, fontWeight: '500', color: '#DC1818'}}>
                                     Принять наличные
                                 </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={handleCheckPayment}
-                                disabled={cashLoading || checkPaymentLoading || completeOrderLoading}
-                                style={{
-                                    padding: 12,
-                                    borderRadius: 8,
-                                    backgroundColor: '#DC1818',
-                                    marginTop: 12,
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: 4,
-                                    opacity: checkPaymentLoading ? 0.7 : 1,
-                                }}
-                            >
-                                {checkPaymentLoading ? (
-                                    <ActivityIndicator size="small" color="#fff" />
-                                ) : (
-                                    <Image source={require("../assets/images/verified.png")} style={{width: 20, height: 20}} resizeMode='contain' />
-                                )}
-                                <Text style={{fontSize: 14, fontWeight: '400', color: '#fff'}}>
-                                    Проверить оплату
-                                </Text>
-                            </TouchableOpacity>
+                            </TouchableOpacity> */}
+                            
                         </>
                     )}
                 </ScrollView>
@@ -670,6 +742,120 @@ const OrderCompletion = () => {
                         <MyButton
                             title="Понятно"
                             onPress={() => setPaymentModalType(null)}
+                            variant="outlined"
+                            width="full"
+                        />
+                    </View>
+                </View>
+            </Modal>
+
+            <Modal
+                visible={isPaymentMethodSheetVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setIsPaymentMethodSheetVisible(false)}
+            >
+                <View style={styles.bottomSheetOverlay}>
+                    <Pressable style={StyleSheet.absoluteFill} onPress={() => setIsPaymentMethodSheetVisible(false)} />
+                    <View style={styles.bottomSheetContent}>
+                        {/* <View style={styles.bottomSheetHandle} /> */}
+
+                        <View style={styles.bottomSheetHeader}>
+                            <Text style={styles.bottomSheetTitle}>Изменить способ оплаты</Text>
+                            <TouchableOpacity
+                                onPress={() => setIsPaymentMethodSheetVisible(false)}
+                                style={styles.bottomSheetCloseButton}
+                            >
+                                <Text style={styles.bottomSheetCloseButtonText}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.bottomSheetSubtitle}>
+                            Клиент хочет оплатить наличными?
+                        </Text>
+                        <Text style={{
+                            fontSize: 13,
+                            fontWeight: '400',
+                            color: '#7d7d7f',
+                            marginBottom: 16,
+                        }}>
+                            Выберите способ оплаты для этого заказа.
+                        </Text>
+
+                        <TouchableOpacity
+                            onPress={() => setSelectedPaymentMethod('cash')}
+                            style={[
+                                styles.paymentOptionCard,
+                                selectedPaymentMethod === 'cash' && styles.paymentOptionCardSelected,
+                            ]}
+                        >
+                            <View style={styles.paymentOptionRow}>
+                                <View style={[styles.paymentOptionIcon, { backgroundColor: '#FFE0E0' }]}>
+                                    <Image source={require("../assets/images/cash.png")} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                                </View>
+                                <View style={styles.paymentOptionTextContainer}>
+                                    <Text style={styles.paymentOptionTitle}>Оплата наличными</Text>
+                                    <Text style={[styles.paymentOptionDescription, {marginTop: 6}]}>
+                                        Клиент оплатит заказ наличными при получении.
+                                    </Text>
+                                    <Text style={[styles.paymentOptionHintText, {marginTop: 6}]}>ⓘ QR-код будет закрыт</Text>
+                                </View>
+                                <View style={[
+                                    styles.radioOuter,
+                                    selectedPaymentMethod === 'cash' && styles.radioOuterSelected,
+                                ]}>
+                                    {selectedPaymentMethod === 'cash' && <View style={styles.radioInner} />}
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => setSelectedPaymentMethod('qr')}
+                            style={[
+                                styles.paymentOptionCard,
+                                selectedPaymentMethod === 'qr' && styles.paymentOptionCardSelected,
+                            ]}
+                        >
+                            <View style={styles.paymentOptionRow}>
+                                <View style={[styles.paymentOptionIcon, { backgroundColor: '#F1F1F4' }]}>
+                                    <Image source={require("../assets/images/qrCode.png")} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                                </View>
+                                <View style={styles.paymentOptionTextContainer}>
+                                    <Text style={styles.paymentOptionTitle}>Оплата по QR</Text>
+                                    <Text style={styles.paymentOptionDescription}>
+                                        Продолжить ожидание оплаты по QR-коду.
+                                    </Text>
+                                </View>
+                                <View style={[
+                                    styles.radioOuter,
+                                    selectedPaymentMethod === 'qr' && styles.radioOuterSelected,
+                                ]}>
+                                    {selectedPaymentMethod === 'qr' && <View style={styles.radioInner} />}
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+
+                        <View style={styles.warningBox}>
+                            <Image source={require("../assets/images/warning.png")} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                            <View style={styles.warningTextContainer}>
+                                <Text style={styles.warningTitle}>Обратите внимание</Text>
+                                <Text style={styles.warningDescription}>
+                                    После изменения способа оплаты завершите заказ согласно выбранному способу.
+                                </Text>
+                            </View>
+                        </View>
+
+                        <MyButton
+                            title="Подтвердить"
+                            onPress={handleConfirmPaymentMethodChange}
+                            variant="contained"
+                            width="full"
+                            loading={selectedPaymentMethod === 'cash' && cashLoading}
+                        />
+                        <View style={{ height: 12 }} />
+                        <MyButton
+                            title="Отмена"
+                            onPress={() => setIsPaymentMethodSheetVisible(false)}
                             variant="outlined"
                             width="full"
                         />
@@ -797,6 +983,148 @@ const styles = StyleSheet.create({
     },
     kaspiLoader: {
         marginVertical: 32,
+    },
+    bottomSheetOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    bottomSheetContent: {
+        backgroundColor: 'white',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 24,
+        paddingBottom: 32,
+    },
+    bottomSheetHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#E3E3E3',
+        alignSelf: 'center',
+        marginBottom: 16,
+    },
+    bottomSheetHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    bottomSheetTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#292D32',
+    },
+    bottomSheetCloseButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#F1F1F4',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    bottomSheetCloseButtonText: {
+        fontSize: 16,
+        color: '#292D32',
+    },
+    bottomSheetSubtitle: {
+        fontSize: 13,
+        fontWeight: '400',
+        color: '#7d7d7f',
+        marginTop: 12,
+        marginBottom: 6,
+    },
+    paymentOptionCard: {
+        borderWidth: 1,
+        borderColor: '#E3E3E3',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 12,
+    },
+    paymentOptionCardSelected: {
+        borderColor: '#DC1818',
+        backgroundColor: '#FEF2F2',
+    },
+    paymentOptionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    paymentOptionIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 100,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    qrIconGlyph: {
+        fontSize: 22,
+        color: '#6A7282',
+    },
+    paymentOptionTextContainer: {
+        flex: 1,
+    },
+    paymentOptionTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#292D32',
+    },
+    paymentOptionDescription: {
+        fontSize: 12,
+        fontWeight: '400',
+        color: '#7d7d7f',
+        marginTop: 2,
+    },
+    radioOuter: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 2,
+        borderColor: '#E3E3E3',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    radioOuterSelected: {
+        borderColor: '#DC1818',
+    },
+    radioInner: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: '#DC1818',
+    },
+    paymentOptionHint: {
+        marginTop: 8,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#F9C8C8',
+    },
+    paymentOptionHintText: {
+        fontSize: 12,
+        fontWeight: '400',
+        color: '#DC1818',
+    },
+    warningBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: '#FDF3E9',
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 20,
+    },
+    warningTextContainer: {
+        flex: 1,
+    },
+    warningTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#292D32',
+    },
+    warningDescription: {
+        fontSize: 12,
+        fontWeight: '400',
+        color: '#7d7d7f',
+        marginTop: 2,
     },
 });
 

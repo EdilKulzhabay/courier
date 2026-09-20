@@ -1,7 +1,8 @@
 import { registerForPushNotificationsAsync } from "@/utils/registerForPushNotificationsAsync";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Dimensions, Image, Keyboard, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { apiService } from "../api/services";
 import MyButton from "../components/MyButton";
 import OutlinedFilledLabelInput from "../components/OutlinedFilledLabelInput";
@@ -58,87 +59,102 @@ const Login = () => {
     }
 
     return (
-        <View style={styles.container}>
+        <KeyboardAvoidingView style={styles.container} behavior="padding">
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+                <View style={styles.container}>
 
-            <View style={styles.bannerContainer}>
-                <Image
-                    source={require('../assets/images/banner.png')} 
-                    style={{height: screenWidth / 1.76}}
-                    resizeMode="contain"
-                />
-            </View>
-
-            <View style={styles.headerContainer}>
-                <Text style={styles.title}>
-                    Добро пожаловать!
-                </Text>
-                <Text style={styles.subtitle}>
-                    Введите данные, чтобы продолжить
-                </Text>
-            </View>
-
-            <View style={styles.contentContainer}>
-                <View>
-                    {loginMethod === 'phone' ? (
-                        <OutlinedFilledLabelInput
-                            label="Номер телефона"
-                            keyboardType="phone-pad"
-                            value={phone}
-                            onChangeText={(text) => setPhone(text)}
-                            mask="phone"
-                            onRightIconPress={() => {}}
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <Image
+                            source={require('../assets/images/arrowBack.png')}
+                            style={styles.backIcon}
+                            resizeMode="contain"
                         />
-                    ) : (
-                        <OutlinedFilledLabelInput
-                            label="Введите почту"
-                            keyboardType="email-address"
-                            value={email}
-                            onChangeText={(text) => setEmail(text)}
-                            onRightIconPress={() => {}}
-                            autoCapitalize="none"
+                    </TouchableOpacity>
+
+                    <View style={styles.bannerContainer}>
+                        <Image
+                            source={require('../assets/images/banner.png')}
+                            style={{height: screenWidth / 1.76}}
+                            resizeMode="contain"
                         />
-                    )}
+                    </View>
 
-                    <OutlinedFilledLabelInput
-                        label="Введите пароль"
-                        keyboardType="default"
-                        value={password}
-                        onChangeText={(text) => setPassword(text)}
-                        onRightIconPress={() => {}}
-                        isPassword={true}
-                        autoCapitalize="none"
-                    />
-
-                    <TouchableOpacity
-                        onPress={() => setLoginMethod(loginMethod === 'phone' ? 'email' : 'phone')}
-                        style={styles.forgotPassword}
-                    >
-                        <Text style={styles.forgotPasswordText}>
-                            {loginMethod === 'phone' ? 'Войти через почту' : 'Войти через телефон'}
+                    <View style={styles.headerContainer}>
+                        <Text style={styles.title}>
+                            Добро пожаловать!
                         </Text>
-                    </TouchableOpacity>
-                </View>
-
-                <View>
-                    <MyButton
-                        title="Войти"
-                        variant="contained"
-                        disabled={false}
-                        width="full"
-                        onPress={handleLogin}
-                        loading={loading}
-                    />
-                    <TouchableOpacity 
-                        onPress={() => router.push("./register")} 
-                        style={styles.registerContainer}>
-                        <Text style={styles.registerText}>
-                            Еще нет аккаунта? <Text style={styles.registerLink}>Зарегистрироваться</Text>
+                        <Text style={styles.subtitle}>
+                            Введите данные, чтобы продолжить
                         </Text>
-                    </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.contentContainer}>
+                        <View>
+                            {loginMethod === 'phone' ? (
+                                <OutlinedFilledLabelInput
+                                    label="Номер телефона"
+                                    keyboardType="phone-pad"
+                                    value={phone}
+                                    onChangeText={(text) => setPhone(text)}
+                                    mask="phone"
+                                    onRightIconPress={() => {}}
+                                />
+                            ) : (
+                                <OutlinedFilledLabelInput
+                                    label="Введите почту"
+                                    keyboardType="email-address"
+                                    value={email}
+                                    onChangeText={(text) => setEmail(text)}
+                                    onRightIconPress={() => {}}
+                                    autoCapitalize="none"
+                                />
+                            )}
+
+                            <OutlinedFilledLabelInput
+                                label="Введите пароль"
+                                keyboardType="default"
+                                value={password}
+                                onChangeText={(text) => setPassword(text)}
+                                onRightIconPress={() => {}}
+                                isPassword={true}
+                                autoCapitalize="none"
+                            />
+
+                            <TouchableOpacity
+                                onPress={() => {
+                                    Keyboard.dismiss();
+                                    setLoginMethod(loginMethod === 'phone' ? 'email' : 'phone');
+                                }}
+                                style={styles.forgotPassword}
+                            >
+                                <Text style={styles.forgotPasswordText}>
+                                    {loginMethod === 'phone' ? 'Войти через почту' : 'Войти через телефон'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View>
+                            <MyButton
+                                title="Войти"
+                                variant="contained"
+                                disabled={false}
+                                width="full"
+                                onPress={handleLogin}
+                                loading={loading}
+                            />
+                            <TouchableOpacity
+                                onPress={() => router.push("./register")}
+                                style={styles.registerContainer}>
+                                <Text style={styles.registerText}>
+                                    Еще нет аккаунта? <Text style={styles.registerLink}>Зарегистрироваться</Text>
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
                 </View>
-            </View>
-          
-        </View>
+            </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
     );
 };
 
@@ -146,6 +162,21 @@ const styles = StyleSheet.create({
     container: {
         flex: 1, 
         backgroundColor: 'white'
+    },
+    backButton: {
+        position: 'absolute',
+        top: 30,
+        left: 16,
+        zIndex: 100,
+        padding: 8,
+        backgroundColor: '#EFEFEF',
+        borderRadius: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    backIcon: {
+        width: 24,
+        height: 24,
     },
     bannerContainer: {
         width: '100%',

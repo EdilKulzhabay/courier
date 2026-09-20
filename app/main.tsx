@@ -1,12 +1,15 @@
 import * as Location from "expo-location";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     Alert,
     BackHandler,
     Image,
     ImageBackground,
+    Linking,
     Modal,
+    Platform,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -16,7 +19,9 @@ import {
 import { apiService } from "../api/services";
 import MyButton from "../components/MyButton";
 import MySwitchToggle from "../components/MySwitchToggle";
+import NewVersionModal from "../components/NewVersionModal";
 import { CourierData, Order } from "../types/interfaces";
+import { markNewVersionModalShown, shouldShowNewVersionModal } from "../utils/appVersion";
 import { updateCourierData } from "../utils/storage";
 
 declare global {
@@ -32,9 +37,13 @@ const Main = () => {
     const [loading, setLoading] = useState(false);
     const [income, setIncome] = useState<number>(0);
     const [deliveredBottlesToday, setDeliveredBottlesToday] = useState<number>(0);
+    const [ratingYesterday, setRatingYesterday] = useState<number | null>(null);
     const [lastButtonPressTime, setLastButtonPressTime] = useState<number>(0);
+    const [refreshing, setRefreshing] = useState(false);
 
     const [inActiveModal, setInActiveModal] = useState(false);
+    const [carDataModalVisible, setCarDataModalVisible] = useState(false);
+    const [newVersionModalVisible, setNewVersionModalVisible] = useState(false);
 
     const fetchCourierData = async () => {
         const courierData = await apiService.getData();
@@ -43,7 +52,7 @@ const Main = () => {
         setCourier(courierData.userData);
         setCapacity12(courierData.userData.capacity12 || 0);
         setCapacity19(courierData.userData.capacity19 || 0);
-        if (courierData.userData.order?.orderId) {
+        if (courierData.userData.order?.orderId || courierData.userData.order?.stopType === "aquaMarket") {
             setOrder(courierData.userData.order);
         } else {
             setOrder(null);
@@ -73,13 +82,34 @@ const Main = () => {
         }
     }, []);
 
+    const getRating = useCallback(async () => {
+        try {
+            const res = await apiService.getRating();
+            if (res?.success) {
+                setRatingYesterday(res.rating === null || res.rating === undefined ? null : Number(res.rating));
+            }
+        } catch (error) {
+            console.error("Ошибка при получении рейтинга:", error);
+        }
+    }, []);
+
     useFocusEffect(
         useCallback(() => {
         fetchCourierData();
         getIncome();
         getDeliveredBottlesToday();
-        }, [getIncome, getDeliveredBottlesToday]),
+        getRating();
+        }, [getIncome, getDeliveredBottlesToday, getRating]),
     );
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await Promise.all([fetchCourierData(), getIncome(), getDeliveredBottlesToday(), getRating()]);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [getIncome, getDeliveredBottlesToday, getRating]);
 
     useFocusEffect(
         useCallback(() => {
@@ -134,59 +164,127 @@ const Main = () => {
     };
 
     const changeOnTheLine = async () => {
-        const courierData = await apiService.getData();
-        const orderData = courierData.userData.order;
+        if (!courier?._id) {
+            return;
+        }
 
-        if (courierData?.userData?._id && !orderData?.orderId) {
-            const newOnlineStatus = !courierData?.userData?.onTheLine;
+        if (order?.orderId && courier?.status === "active") {
+            alert(
+                "Вы не можете изменить статус, пока не выполните существующий заказ",
+            );
+            return;
+        }
 
-            if (newOnlineStatus) {
-                console.log(
+        const previousOnlineStatus = courier.onTheLine;
+        const newOnlineStatus = !previousOnlineStatus;
+
+        // Оптимистично обновляем UI сразу, не дожидаясь сети/GPS
+        setCourier({ ...courier, onTheLine: newOnlineStatus });
+        global.isOnline = newOnlineStatus;
+
+        if (newOnlineStatus) {
+            console.log(
                 "📍 Пользователь перешел в онлайн, отправляем текущее местоположение",
-                );
-                await sendCurrentLocation("ПЕРЕХОД_В_ОНЛАЙН");
-            } else {
-                console.log(
+            );
+            // Не блокируем переключение статуса ожиданием GPS-фикса
+            sendCurrentLocation("ПЕРЕХОД_В_ОНЛАЙН");
+        } else {
+            console.log(
                 "📴 Пользователь перешел в офлайн, отправка геолокации остановлена",
-                );
-            }
+            );
+        }
 
+        try {
             const res = await apiService.updateData(
-                courierData?.userData?._id,
+                courier._id,
                 "onTheLine",
                 newOnlineStatus,
             );
 
-            if (res.success) {
-                setCourier({ ...courierData?.userData, onTheLine: newOnlineStatus });
-
-                // Обновляем глобальный статус
-                global.isOnline = newOnlineStatus;
+            if (!res.success) {
+                setCourier({ ...courier, onTheLine: previousOnlineStatus });
+                global.isOnline = previousOnlineStatus;
             }
-        } else {
-            alert(
-                "Вы не можете изменить статус, пока не выполните существующий заказ",
-            );
+        } catch (error) {
+            console.error("Ошибка при изменении статуса онлайн:", error);
+            setCourier({ ...courier, onTheLine: previousOnlineStatus });
+            global.isOnline = previousOnlineStatus;
         }
     };
 
+    // Модалка «Доступна новая версия» — не чаще раза в день, только если версия
+    // из CRM (courier.latestAppVersion) отличается от установленной APP_VERSION.
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            const show = await shouldShowNewVersionModal(courier?.latestAppVersion);
+            if (!cancelled && show) {
+                setNewVersionModalVisible(true);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [courier?.latestAppVersion]);
+
+    const handleUpdateApp = async () => {
+        await markNewVersionModalShown();
+        setNewVersionModalVisible(false);
+        const androidStoreUrl = "market://details?id=com.tibetskayacourier2.app";
+        const androidFallbackUrl = "https://play.google.com/store/apps/details?id=com.tibetskayacourier2.app";
+        // TODO: заменить на реальную ссылку App Store, когда приложение курьера будет опубликовано
+        const iosStoreUrl = "https://apps.apple.com/kz/app/tibetskaya-courier/idTODO";
+        try {
+            if (Platform.OS === "ios") {
+                await Linking.openURL(iosStoreUrl);
+                return;
+            }
+            const supported = await Linking.canOpenURL(androidStoreUrl);
+            await Linking.openURL(supported ? androidStoreUrl : androidFallbackUrl);
+        } catch (error) {
+            console.error("❌ Не удалось открыть стор для обновления:", error);
+            await Linking.openURL(androidFallbackUrl).catch(() => {});
+        }
+    };
+
+    const handleRemindVersionLater = async () => {
+        await markNewVersionModalShown();
+        setNewVersionModalVisible(false);
+    };
+
+    const hasCarData = (data: CourierData | null) =>
+        !!data?.carData?.brand?.trim() &&
+        !!data?.carData?.model?.trim() &&
+        !!data?.carData?.color?.trim() &&
+        !!data?.carData?.plateNumber?.trim();
+
     const getOrder = async () => {
+        if (!hasCarData(courier)) {
+        setCarDataModalVisible(true);
+        return;
+        }
         if (Date.now() - lastButtonPressTime < 20000) {
         return;
         }
         setLastButtonPressTime(Date.now());
         setLoading(true);
         const courierData = await apiService.getData();
-        if (
-        courierData.success &&
-        courierData.userData?.order?.orderId &&
-        courierData.userData?.order
-        ) {
-        setOrder(courierData.userData.order);
+        const fetchedOrder = courierData.userData?.order;
+        if (courierData.success && fetchedOrder?.orderId) {
+        setOrder(fetchedOrder);
         setCourier(courierData.userData);
         setCapacity12(courierData.userData.capacity12 || 0);
         setCapacity19(courierData.userData.capacity19 || 0);
         setLoading(false);
+        return;
+        }
+        if (courierData.success && fetchedOrder?.stopType === "aquaMarket") {
+        setOrder(fetchedOrder);
+        setCourier(courierData.userData);
+        setCapacity12(courierData.userData.capacity12 || 0);
+        setCapacity19(courierData.userData.capacity19 || 0);
+        setLoading(false);
+        router.push("./aquaMarketStop");
         return;
         }
         if (courier?.fullName) {
@@ -210,6 +308,14 @@ const Main = () => {
                 style={{ width: 129, height: 48 }}
                 resizeMode="contain"
                 />
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                {ratingYesterday !== null && (
+                    <View style={styles.ratingBadge}>
+                        <Text style={styles.ratingBadgeText}>{ratingYesterday.toFixed(1)}</Text>
+                        <Text style={styles.ratingBadgeStar}>★</Text>
+                    </View>
+                )}
+
                 <TouchableOpacity
                 onPress={() => {
                     router.push("./settings");
@@ -221,12 +327,16 @@ const Main = () => {
                     resizeMode="contain"
                 />
                 </TouchableOpacity>
+                </View>
             </View>
 
             <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
             >
                 <View style={styles.profileSection}>
                     <View style={styles.profileCard}>
@@ -251,10 +361,10 @@ const Main = () => {
                         <View style={styles.statusContainer}>
                         <View style={styles.switchContainer}>
                             {courier?.status === "active" && (
-                            <MySwitchToggle
-                                value={courier?.onTheLine}
-                                onPress={changeOnTheLine}
-                            />
+                                <MySwitchToggle
+                                    value={courier?.onTheLine}
+                                    onPress={changeOnTheLine}
+                                />
                             )}
                             {courier?.status !== "active" && (
                             <View style={styles.disabledSwitch}>
@@ -409,6 +519,38 @@ const Main = () => {
                             loading={loading}
                         />
                         </>
+                    ) : order?.stopType === "aquaMarket" ? (
+                        <TouchableOpacity
+                        style={styles.fullWidth}
+                        onPress={() => {
+                            router.push("./aquaMarketStop");
+                        }}
+                        >
+                        <View style={styles.orderCard}>
+                            <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start"}}>
+                            <View style={{flexDirection: "row", alignItems: "center"}}>
+                                <View style={{width: 40, height: 40, justifyContent: "center", alignItems: "center", backgroundColor: "#FEF2F2", borderRadius: "100%"}}>
+                                <Image
+                                    source={require("../assets/images/cube.png")}
+                                    style={{ width: 20, height: 20 }}
+                                    resizeMode="contain"
+                                />
+                                </View>
+                                <View style={{marginLeft: 12}}>
+                                <Text style={{fontSize: 14, fontWeight: "500", color: "#101828"}}>Поездка в аквамаркет</Text>
+                                </View>
+                            </View>
+                            <View style={{backgroundColor: "#FFE2E2", borderRadius: 16, paddingVertical: 4, paddingHorizontal: 8}}>
+                                <Text style={{fontSize: 12, fontWeight: "500", color: "#DC1818"}}>Новая остановка!</Text>
+                            </View>
+                            </View>
+
+                            <View style={{marginTop: 12}}>
+                            <Text style={{fontSize: 12, fontWeight: "400", color: "#6A7282"}}>Адрес аквамаркета</Text>
+                            <Text style={{fontSize: 14, fontWeight: "400", color: "#101828"}}>{order?.aquaMarketAddress}</Text>
+                            </View>
+                        </View>
+                        </TouchableOpacity>
                     ) : (
                         <TouchableOpacity
                         style={styles.fullWidth}
@@ -427,14 +569,14 @@ const Main = () => {
                                 />
                                 </View>
                                 <View style={{marginLeft: 12}}>
-                                {order?.products?.b12 > 0 && (
+                                {(order?.products?.b12 ?? 0) > 0 && (
                                     <View style={{flexDirection: "row", alignItems: "center", columnGap: 4}}>
                                     <Text style={{fontSize: 14, fontWeight: "400", color: "#4A5565"}}>12,5л:</Text>
                                     <View style={{ width: 4, height: 4, backgroundColor: "#4A5565", borderRadius: "100%"}}/>
                                     <Text style={{fontSize: 14, fontWeight: "400", color: "#4A5565"}}>{order?.products?.b12} бутылей</Text>
                                     </View>
                                 )}
-                                {order?.products?.b19 > 0 && (
+                                {(order?.products?.b19 ?? 0) > 0 && (
                                     <View style={{flexDirection: "row", alignItems: "center", columnGap: 4}}>
                                     <Text style={{fontSize: 14, fontWeight: "400", color: "#4A5565"}}>19,8л:</Text>
                                     <View style={{ width: 4, height: 4, backgroundColor: "#4A5565", borderRadius: "100%"}}/>
@@ -586,6 +728,48 @@ const Main = () => {
                 </View>
                 </View>
             </Modal>
+
+            <Modal
+                visible={carDataModalVisible}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setCarDataModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Заполните данные машины</Text>
+                    <Text style={styles.modalLabel}>
+                    Чтобы получать заказы, укажите марку, модель, цвет и гос. номер вашей машины
+                    </Text>
+
+                    <View style={styles.modalButton}>
+                    <MyButton
+                        title="Заполнить данные"
+                        onPress={() => {
+                        setCarDataModalVisible(false);
+                        router.push("./changeData");
+                        }}
+                        variant="contained"
+                        width="full"
+                    />
+                    </View>
+                    <View style={styles.modalSecondaryButton}>
+                    <MyButton
+                        title="Отмена"
+                        onPress={() => setCarDataModalVisible(false)}
+                        variant="outlined"
+                        width="full"
+                    />
+                    </View>
+                </View>
+                </View>
+            </Modal>
+
+            <NewVersionModal
+                visible={newVersionModalVisible}
+                onUpdate={handleUpdateApp}
+                onRemindLater={handleRemindVersionLater}
+            />
         </View>
     );
 };
@@ -601,6 +785,25 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
+    },
+    ratingBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#FEF2F2",
+        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        marginRight: 12,
+    },
+    ratingBadgeText: {
+        fontSize: 13,
+        fontWeight: "600",
+        color: "#292D32",
+        marginRight: 4,
+    },
+    ratingBadgeStar: {
+        fontSize: 13,
+        color: "#FFB800",
     },
     profileSection: {
         backgroundColor: "#F6F6F6",
@@ -834,6 +1037,9 @@ const styles = StyleSheet.create({
     },
     modalButton: {
         marginTop: 40,
+    },
+    modalSecondaryButton: {
+        marginTop: 12,
     },
     capacityTitle: {
         fontSize: 16,

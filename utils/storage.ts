@@ -7,6 +7,7 @@ const NOTIFICATION_TOKEN_DATA_KEY = '@notification_token_data';
 const ORDER_DATA_KEY = '@order_data';
 const NEED_CALL_VISITED_ORDERS_KEY = '@need_call_visited_order_ids';
 const LAST_WITHDRAWAL_TIME_KEY = '@last_withdrawal_time';
+const LOCATION_DISCLOSURE_ACCEPTED_KEY = '@location_disclosure_accepted';
 
 const parseStringArray = (raw: string | null): string[] => {
   if (!raw) {
@@ -208,6 +209,25 @@ export const saveLastWithdrawalTime = async (timestamp: number): Promise<void> =
     await AsyncStorage.setItem(LAST_WITHDRAWAL_TIME_KEY, String(timestamp));
   } catch (error) {
     console.error('Ошибка при сохранении времени последнего вывода:', error);
+    throw error;
+  }
+};
+
+export const getLocationDisclosureAccepted = async (): Promise<boolean> => {
+  try {
+    const data = await AsyncStorage.getItem(LOCATION_DISCLOSURE_ACCEPTED_KEY);
+    return data === 'true';
+  } catch (error) {
+    console.error('Ошибка при получении статуса согласия на геолокацию:', error);
+    return false;
+  }
+};
+
+export const saveLocationDisclosureAccepted = async (): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(LOCATION_DISCLOSURE_ACCEPTED_KEY, 'true');
+  } catch (error) {
+    console.error('Ошибка при сохранении статуса согласия на геолокацию:', error);
     throw error;
   }
 };
